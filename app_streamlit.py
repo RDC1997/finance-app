@@ -17,8 +17,8 @@ def get_transactions():
             if not df.empty:
                 df.columns = [c.lower() for c in df.columns]
             return df
-    except Exception as e:
-        st.error(f"Erro GET transactions: {e}")
+    except:
+        pass
     return pd.DataFrame()
 
 
@@ -45,8 +45,8 @@ def get_goals():
     return []
 
 
-def add_transaction(payload):
-    return requests.post(f"{API}/transaction", json=payload)
+def add_transaction(data):
+    return requests.post(f"{API}/transaction", json=data)
 
 
 def update_transaction(tid, data):
@@ -108,7 +108,7 @@ if page == "Dashboard":
 
 
 # =========================
-# RUBEN / GABI
+# RUBEN / GABI (CORRIGIDO CATEGORY NUNCA NULL)
 # =========================
 if page in ["Ruben", "Gabi"]:
 
@@ -117,7 +117,7 @@ if page in ["Ruben", "Gabi"]:
 
     tipo = st.selectbox("Tipo", ["Salario", "Despesa"])
 
-    categoria = None
+    categoria = "Salario"  # 👈 FIX IMPORTANTE (NUNCA NULL)
     descricao = ""
 
     if tipo == "Despesa":
@@ -132,10 +132,18 @@ if page in ["Ruben", "Gabi"]:
 
     if st.button("Adicionar"):
 
+        if data > date.today():
+            st.error("Data inválida")
+            st.stop()
+
+        if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
+            st.error("Descrição obrigatória para 'Outros'")
+            st.stop()
+
         payload = {
             "person": person,
             "type": tipo,
-            "category": categoria,
+            "category": categoria,   # 👈 SEMPRE STRING
             "description": descricao,
             "value": valor,
             "date": str(data)
@@ -148,8 +156,7 @@ if page in ["Ruben", "Gabi"]:
             st.rerun()
         else:
             st.error("Erro ao adicionar")
-            st.write("Status:", r.status_code)
-            st.write("Resposta:", r.text)
+            st.write(r.text)
 
 
     st.divider()
@@ -169,7 +176,7 @@ if page in ["Ruben", "Gabi"]:
                 if row["category"] == "Outros":
                     st.write("Descrição:", row.get("description", ""))
 
-            # EDITAR
+            # EDIT
             with st.form(f"edit_{row['id']}"):
 
                 new_type = st.selectbox(
@@ -178,7 +185,10 @@ if page in ["Ruben", "Gabi"]:
                     index=0 if row["type"] == "Salario" else 1
                 )
 
-                new_category = st.selectbox("Categoria", categories)
+                new_category = "Salario"
+
+                if new_type == "Despesa":
+                    new_category = st.selectbox("Categoria", categories)
 
                 new_description = st.text_input(
                     "Descrição",
@@ -200,7 +210,7 @@ if page in ["Ruben", "Gabi"]:
                     update_transaction(row["id"], {
                         "person": person,
                         "type": new_type,
-                        "category": new_category,
+                        "category": new_category,  # 👈 SEMPRE STRING
                         "description": new_description,
                         "value": new_value,
                         "date": str(new_date)
@@ -226,18 +236,12 @@ if page == "Metas":
     if st.button("Criar meta"):
 
         if nome.strip():
-            r = add_goal({
+            add_goal({
                 "name": nome,
                 "target_amount": objetivo,
                 "current_amount": 0
             })
-
-            if r.status_code == 200:
-                st.success("Meta criada")
-                st.rerun()
-            else:
-                st.error("Erro ao criar meta")
-                st.write(r.text)
+            st.rerun()
 
     st.divider()
 
@@ -251,7 +255,7 @@ if page == "Metas":
         st.write(f"**{g['name']}**")
         st.progress(progresso / 100)
 
-        if st.button("Eliminar meta", key=f"goal_{g['id']}"):
+        if st.button("Eliminar meta", key=f"g_{g['id']}"):
             delete_goal(g["id"])
             st.rerun()
 
