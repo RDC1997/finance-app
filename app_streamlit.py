@@ -4,8 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import date
 
-API = "http://127.0.0.1:8000"
-
+# =========================
+# CONFIG API (PRODUÇÃO)
+# =========================
+API = st.secrets.get("API", "http://127.0.0.1:8000")
 
 # =========================
 # FUNÇÕES
@@ -59,12 +61,9 @@ def get_goals():
 
 
 # =========================
-# CONFIG
+# UI CONFIG
 # =========================
 st.set_page_config(page_title="Finance App", layout="wide")
-
-API = "https://finance-app-backend-xvo2.onrender.com"
-
 
 # =========================
 # STYLE
@@ -108,7 +107,6 @@ df = get_transactions()
 categories = get_categories()
 goals = get_goals()
 
-
 # =========================
 # SIDEBAR
 # =========================
@@ -118,7 +116,6 @@ page = st.sidebar.radio(
     "Menu",
     ["🏠 Dashboard", "👨 Ruben", "👩 Gabi", "🎯 Metas", "🏷 Categorias"]
 )
-
 
 # =========================
 # DASHBOARD
@@ -139,53 +136,6 @@ if page == "🏠 Dashboard":
 
     st.divider()
 
-    # =========================
-    # GRÁFICO 1 - EVOLUÇÃO
-    # =========================
-    st.subheader("Evolução financeira")
-
-    if not df.empty:
-
-        df_sorted = df.sort_values("date")
-
-        df_sorted["mov"] = df_sorted.apply(
-            lambda x: x["value"] if x["type"].lower() == "salario" else -x["value"],
-            axis=1
-        )
-
-        df_sorted["saldo"] = df_sorted["mov"].cumsum()
-
-        fig, ax = plt.subplots()
-        ax.plot(df_sorted["date"], df_sorted["saldo"])
-        ax.set_title("Evolução do saldo")
-        ax.set_xlabel("Data")
-        ax.set_ylabel("Saldo (€)")
-
-        st.pyplot(fig)
-
-    # =========================
-    # GRÁFICO 2 - CATEGORIAS
-    # =========================
-    st.subheader("Gastos por categoria")
-
-    if not df.empty:
-
-        despesas = df[df["type"].str.lower() == "despesa"]
-
-        if not despesas.empty:
-
-            categorias = despesas.groupby("category")["value"].sum()
-
-            fig2, ax2 = plt.subplots()
-            ax2.bar(categorias.index, categorias.values)
-
-            ax2.set_title("Despesas por categoria")
-            ax2.set_ylabel("€")
-
-            st.pyplot(fig2)
-
-    st.divider()
-
     st.subheader("Últimos movimentos")
 
     if df.empty:
@@ -198,7 +148,6 @@ if page == "🏠 Dashboard":
                 {row['value']} € • {row['date']}
             </div>
             """, unsafe_allow_html=True)
-
 
 # =========================
 # RUBEN / GABI
@@ -262,7 +211,6 @@ if page in ["👨 Ruben", "👩 Gabi"]:
             </div>
             """, unsafe_allow_html=True)
 
-
 # =========================
 # METAS
 # =========================
@@ -293,11 +241,7 @@ if page == "🎯 Metas":
     for g in goals:
 
         target = g.get("target_amount", 0)
-
-        if target > 0:
-            progresso = min((saldo / target) * 100, 100)
-        else:
-            progresso = 0
+        progresso = min((saldo / target) * 100, 100) if target > 0 else 0
 
         st.markdown(f"""
         <div class="card">
@@ -308,7 +252,6 @@ if page == "🎯 Metas":
         """, unsafe_allow_html=True)
 
         st.progress(progresso / 100)
-
 
 # =========================
 # CATEGORIAS
