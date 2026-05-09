@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import pandas as pd
@@ -5,23 +6,13 @@ import matplotlib.pyplot as plt
 from datetime import date
 
 # =========================
-# CONFIG API (PRODUÇÃO)
+# API
 # =========================
 API = st.secrets.get("API", "http://127.0.0.1:8000")
 
 # =========================
-# FUNÇÕES
+# DATA HELPERS
 # =========================
-def calculate_savings(df):
-    if df.empty:
-        return 0
-
-    receitas = df[df["type"].str.lower() == "salario"]["value"].sum()
-    despesas = df[df["type"].str.lower() == "despesa"]["value"].sum()
-
-    return receitas - despesas
-
-
 def get_transactions():
     try:
         r = requests.get(f"{API}/transactions")
@@ -38,6 +29,14 @@ def get_transactions():
 
 def add_transaction(data):
     requests.post(f"{API}/transaction", json=data)
+
+
+def delete_transaction(tid):
+    requests.delete(f"{API}/transaction/{tid}")
+
+
+def update_transaction(tid, data):
+    requests.put(f"{API}/transaction/{tid}", json=data)
 
 
 def get_categories():
@@ -61,100 +60,76 @@ def get_goals():
 
 
 # =========================
-# UI CONFIG
+# CONFIG
 # =========================
 st.set_page_config(page_title="Finance App", layout="wide")
 
-# =========================
-# STYLE
-# =========================
 st.markdown("""
 <style>
-
-.block-container {
-    padding: 2rem;
-}
-
 .card {
-    padding: 15px;
+    padding: 12px;
     border-radius: 12px;
     background: #111827;
+    color: white;
     margin-bottom: 10px;
-    border: 1px solid #1f2937;
-    color: white;
 }
-
-.stButton button {
-    border-radius: 10px;
-    background: #1f2937;
-    color: white;
-    border: 1px solid #374151;
-}
-
-.stButton button:hover {
-    border: 1px solid #60a5fa;
-    transform: scale(1.02);
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 
 # =========================
-# DATA
+# LOAD DATA
 # =========================
 df = get_transactions()
 categories = get_categories()
 goals = get_goals()
 
+
 # =========================
 # SIDEBAR
 # =========================
-st.sidebar.title("💰 Finance App")
+st.sidebar.title("Finance App")
 
 page = st.sidebar.radio(
     "Menu",
-    ["🏠 Dashboard", "👨 Ruben", "👩 Gabi", "🎯 Metas", "🏷 Categorias"]
+    ["Dashboard", "Ruben", "Gabi", "Metas", "Categorias"]
 )
+
+
+# =========================
+# VALIDATION
+# =========================
+def validate_date(d):
+    return d <= date.today()
+
 
 # =========================
 # DASHBOARD
 # =========================
-if page == "🏠 Dashboard":
+if page == "Dashboard":
 
-    st.title("Dashboard Financeiro")
+    st.title("Dashboard")
 
-    receitas = df[df["type"].str.lower() == "salario"]["value"].sum() if not df.empty else 0
-    despesas = df[df["type"].str.lower() == "despesa"]["value"].sum() if not df.empty else 0
+    if not df.empty:
+        receitas = df[df["type"].str.lower() == "salario"]["value"].sum()
+        despesas = df[df["type"].str.lower() == "despesa"]["value"].sum()
+    else:
+        receitas = despesas = 0
+
     saldo = receitas - despesas
 
     c1, c2, c3 = st.columns(3)
-
     c1.metric("Receitas", f"{receitas:.2f} €")
     c2.metric("Despesas", f"{despesas:.2f} €")
     c3.metric("Saldo", f"{saldo:.2f} €")
 
-    st.divider()
-
-    st.subheader("Últimos movimentos")
-
-    if df.empty:
-        st.info("Sem dados ainda")
-    else:
-        for _, row in df.tail(8).iterrows():
-            st.markdown(f"""
-            <div class="card">
-                <b>{row['type']}</b> • {row['category']} <br>
-                {row['value']} € • {row['date']}
-            </div>
-            """, unsafe_allow_html=True)
 
 # =========================
-# RUBEN / GABI
+# RUBEN / GABI (CRUD COMPLETO)
 # =========================
-if page in ["👨 Ruben", "👩 Gabi"]:
+if page in ["Ruben", "Gabi"]:
 
-    person = "Ruben" if "Ruben" in page else "Gabi"
+    person = page
 
     st.title(person)
 
@@ -167,22 +142,21 @@ if page in ["👨 Ruben", "👩 Gabi"]:
         categoria = st.selectbox("Categoria", categories)
 
         if categoria == "Outros":
-            st.warning("Categoria 'Outros' obriga descrição")
-            descricao = st.text_area("Descrição obrigatória")
+            st.warning("Descrição obrigatória")
+            descricao = st.text_area("Descrição")
 
     col1, col2 = st.columns(2)
-
     valor = col1.number_input("Valor", min_value=0.0)
     data = col2.date_input("Data")
 
-    if data > date.today():
-        st.error("Data inválida")
-        st.stop()
-
     if st.button("Adicionar"):
 
+        if not validate_date(data):
+            st.error("Data inválida")
+            st.stop()
+
         if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
-            st.error("Descrição obrigatória para 'Outros'")
+            st.error("Descrição obrigatória")
             st.stop()
 
         add_transaction({
@@ -200,74 +174,63 @@ if page in ["👨 Ruben", "👩 Gabi"]:
 
     st.subheader("Movimentos")
 
-    if not df.empty:
-        df_p = df[df["person"] == person]
+    df_p = df[df["person"] == person] if not df.empty else pd.DataFrame()
 
-        for _, row in df_p.tail(10).iterrows():
-            st.markdown(f"""
-            <div class="card">
-                <b>{row['type']}</b> - {row['category']} <br>
-                {row['value']} € | {row['date']}
-            </div>
-            """, unsafe_allow_html=True)
+    for _, row in df_p.iterrows():
+
+        with st.expander(f"{row['type']} - {row['value']} € ({row['date']})"):
+
+            st.write("Categoria:", row["category"])
+            st.write("Descrição:", row["description"])
+
+            # ================= EDIT =================
+            with st.form(f"edit_{row['id']}"):
+                new_type = st.selectbox("Tipo", ["Salario", "Despesa"], index=0)
+                new_value = st.number_input("Valor", value=float(row["value"]))
+                new_cat = st.selectbox("Categoria", categories)
+                new_desc = st.text_input("Descrição", value=row.get("description", ""))
+                new_date = st.date_input("Data", value=row["date"])
+
+                if st.form_submit_button("Guardar alterações"):
+                    update_transaction(row["id"], {
+                        "person": person,
+                        "type": new_type,
+                        "category": new_cat,
+                        "description": new_desc,
+                        "value": new_value,
+                        "date": str(new_date)
+                    })
+                    st.rerun()
+
+            # ================= DELETE =================
+            if st.button(f"Eliminar {row['id']}"):
+                delete_transaction(row["id"])
+                st.rerun()
+
 
 # =========================
-# METAS
+# METAS (simplificado aqui)
 # =========================
-if page == "🎯 Metas":
+if page == "Metas":
 
-    st.title("Metas Financeiras")
-
-    nome = st.text_input("Nome da meta")
-    desc = st.text_input("Descrição")
-    objetivo = st.number_input("Objetivo (€)", min_value=0.0)
-
-    if st.button("Criar meta"):
-
-        if nome.strip():
-            requests.post(f"{API}/goal", json={
-                "name": nome,
-                "description": desc,
-                "target_amount": objetivo,
-                "current_amount": 0
-            })
-
-            st.rerun()
-
-    st.divider()
-
-    saldo = calculate_savings(df)
+    st.title("Metas")
 
     for g in goals:
+        st.write(g)
 
-        target = g.get("target_amount", 0)
-        progresso = min((saldo / target) * 100, 100) if target > 0 else 0
-
-        st.markdown(f"""
-        <div class="card">
-            <b>{g['name']}</b><br>
-            {g.get('description','')}<br><br>
-            Progresso: {progresso:.1f}%
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.progress(progresso / 100)
 
 # =========================
 # CATEGORIAS
 # =========================
-if page == "🏷 Categorias":
+if page == "Categorias":
 
     st.title("Categorias")
 
     nova = st.text_input("Nova categoria")
 
     if st.button("Adicionar"):
-        if nova.strip():
-            requests.post(f"{API}/categories", json={"name": nova})
-            st.rerun()
-
-    st.divider()
+        requests.post(f"{API}/categories", json={"name": nova})
+        st.rerun()
 
     for c in categories:
-        st.markdown(f"<div class='card'>{c}</div>", unsafe_allow_html=True)
+        st.write(c)
