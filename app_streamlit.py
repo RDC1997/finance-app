@@ -35,16 +35,6 @@ def get_categories():
     return ["Comida", "Casa", "Transportes", "Outros"]
 
 
-def get_goals():
-    try:
-        r = requests.get(f"{API}/goals")
-        if r.ok:
-            return r.json()
-    except:
-        pass
-    return []
-
-
 def add_transaction(data):
     return requests.post(f"{API}/transaction", json=data)
 
@@ -57,14 +47,6 @@ def delete_transaction(tid):
     return requests.delete(f"{API}/transaction/{tid}")
 
 
-def add_goal(data):
-    return requests.post(f"{API}/goal", json=data)
-
-
-def delete_goal(gid):
-    return requests.delete(f"{API}/goal/{gid}")
-
-
 # =========================
 # CONFIG
 # =========================
@@ -72,7 +54,6 @@ st.set_page_config(page_title="Finance App", layout="wide")
 
 df = get_transactions()
 categories = get_categories()
-goals = get_goals()
 
 
 # =========================
@@ -82,29 +63,8 @@ st.sidebar.title("Finance App")
 
 page = st.sidebar.radio(
     "Menu",
-    ["Dashboard", "Ruben", "Gabi", "Metas", "Categorias"]
+    ["Ruben", "Gabi"]
 )
-
-
-# =========================
-# DASHBOARD
-# =========================
-if page == "Dashboard":
-
-    st.title("Dashboard")
-
-    if not df.empty:
-        receitas = df[df["type"].str.lower() == "salario"]["value"].sum()
-        despesas = df[df["type"].str.lower() == "despesa"]["value"].sum()
-    else:
-        receitas = despesas = 0
-
-    saldo = receitas - despesas
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Receitas", f"{receitas:.2f} €")
-    c2.metric("Despesas", f"{despesas:.2f} €")
-    c3.metric("Saldo", f"{saldo:.2f} €")
 
 
 # =========================
@@ -115,20 +75,25 @@ if page in ["Ruben", "Gabi"]:
     person = page
     st.title(person)
 
+    st.subheader("Adicionar movimento")
+
     tipo = st.selectbox("Tipo", ["Salario", "Despesa"])
 
     categoria = "Salario"
     descricao = ""
 
+    # =========================
+    # FORM DINÂMICO
+    # =========================
     if tipo == "Despesa":
+
         categoria = st.selectbox("Categoria", categories)
 
         if categoria == "Outros":
             descricao = st.text_area("Descrição obrigatória")
 
-    col1, col2 = st.columns(2)
-    valor = col1.number_input("Valor", min_value=0.0)
-    data = col2.date_input("Data")
+    valor = st.number_input("Valor", min_value=0.0)
+    data = st.date_input("Data")
 
     if st.button("Adicionar"):
 
@@ -151,6 +116,10 @@ if page in ["Ruben", "Gabi"]:
 
         st.rerun()
 
+
+    # =========================
+    # MOVIMENTOS (STYLE NOVO)
+    # =========================
     st.divider()
     st.subheader("Movimentos")
 
@@ -158,32 +127,26 @@ if page in ["Ruben", "Gabi"]:
 
     for _, row in df_p.iterrows():
 
-        # =========================
-        # VISUAL LIMPO (IMPORTANTE)
-        # =========================
-        if row["type"].lower() == "salario":
+        titulo = f"{row['type']} • {row['value']} €"
 
-            st.markdown(f"""
-            **Salário**  
-            {row['value']} € • {row['date']}
-            """)
+        with st.expander(titulo):
 
-        else:
+            # =========================
+            # VISUAL SIMPLES
+            # =========================
+            st.write("Data:", row["date"])
 
-            st.markdown(f"""
-            **Despesa**  
-            {row['value']} € • {row['date']}
-            """)
+            if row["type"].lower() == "despesa":
+                st.write("Categoria:", row["category"])
 
-            st.write("Categoria:", row["category"])
+                if row["category"] == "Outros":
+                    st.write("Descrição:", row.get("description", ""))
 
-            if row["category"] == "Outros":
-                st.write("Descrição:", row.get("description", ""))
-
-        # =========================
-        # EDITAR
-        # =========================
-        with st.expander("Editar"):
+            # =========================
+            # EDITAR (MESMO MODELO DO INPUT)
+            # =========================
+            st.divider()
+            st.markdown("### Editar")
 
             with st.form(f"edit_{row['id']}"):
 
@@ -204,8 +167,6 @@ if page in ["Ruben", "Gabi"]:
                             "Descrição obrigatória",
                             value=row.get("description", "")
                         )
-                    else:
-                        new_description = row.get("description", "")
 
                 new_value = st.number_input(
                     "Valor",
@@ -234,71 +195,7 @@ if page in ["Ruben", "Gabi"]:
 
                     st.rerun()
 
+
         if st.button("Eliminar", key=f"del_{row['id']}"):
             delete_transaction(row["id"])
             st.rerun()
-
-
-# =========================
-# METAS
-# =========================
-if page == "Metas":
-
-    st.title("Metas")
-
-    nome = st.text_input("Nome da meta")
-    objetivo = st.number_input("Objetivo (€)", min_value=0.0)
-
-    if st.button("Criar meta"):
-
-        if nome.strip():
-            add_goal({
-                "name": nome,
-                "target_amount": objetivo,
-                "current_amount": 0
-            })
-            st.rerun()
-
-    st.divider()
-
-    saldo = df["value"].sum() if not df.empty else 0
-
-    for g in goals:
-
-        target = g.get("target_amount", 0)
-        progresso = min((saldo / target) * 100 if target else 0, 100)
-
-        st.write(f"**{g['name']}**")
-        st.progress(progresso / 100)
-
-        if st.button("Eliminar meta", key=f"g_{g['id']}"):
-            delete_goal(g["id"])
-            st.rerun()
-
-
-# =========================
-# CATEGORIAS
-# =========================
-if page == "Categorias":
-
-    st.title("Categorias")
-
-    nova = st.text_input("Nova categoria")
-
-    if st.button("Adicionar"):
-        if nova.strip() and nova.lower() != "outros":
-            requests.post(f"{API}/categories", json={"name": nova})
-            st.rerun()
-
-    st.divider()
-
-    for c in categories:
-
-        col1, col2 = st.columns([3, 1])
-
-        col1.write(c)
-
-        if c != "Outros":
-            if col2.button("Eliminar", key=f"cat_{c}"):
-                requests.delete(f"{API}/categories/{c}")
-                st.rerun()
