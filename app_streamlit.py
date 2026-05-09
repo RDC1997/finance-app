@@ -5,6 +5,7 @@ from datetime import date
 
 API = st.secrets.get("API", "http://127.0.0.1:8000")
 
+
 # =========================
 # DATA
 # =========================
@@ -16,8 +17,8 @@ def get_transactions():
             if not df.empty:
                 df.columns = [c.lower() for c in df.columns]
             return df
-    except:
-        pass
+    except Exception as e:
+        st.error(f"Erro GET transactions: {e}")
     return pd.DataFrame()
 
 
@@ -44,25 +45,24 @@ def get_goals():
     return []
 
 
-def add_transaction(data):
-    requests.post(f"{API}/transaction", json=data)
+def add_transaction(payload):
+    return requests.post(f"{API}/transaction", json=payload)
 
 
 def update_transaction(tid, data):
-    requests.put(f"{API}/transaction/{tid}", json=data)
+    return requests.put(f"{API}/transaction/{tid}", json=data)
 
 
 def delete_transaction(tid):
-    requests.delete(f"{API}/transaction/{tid}")
+    return requests.delete(f"{API}/transaction/{tid}")
 
 
-# GOALS
 def add_goal(data):
-    requests.post(f"{API}/goal", json=data)
+    return requests.post(f"{API}/goal", json=data)
 
 
 def delete_goal(gid):
-    requests.delete(f"{API}/goal/{gid}")
+    return requests.delete(f"{API}/goal/{gid}")
 
 
 # =========================
@@ -74,6 +74,7 @@ df = get_transactions()
 categories = get_categories()
 goals = get_goals()
 
+
 # =========================
 # SIDEBAR
 # =========================
@@ -83,6 +84,7 @@ page = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Ruben", "Gabi", "Metas", "Categorias"]
 )
+
 
 # =========================
 # DASHBOARD
@@ -130,24 +132,25 @@ if page in ["Ruben", "Gabi"]:
 
     if st.button("Adicionar"):
 
-        if data > date.today():
-            st.error("Data inválida")
-            st.stop()
-
-        if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
-            st.error("Descrição obrigatória")
-            st.stop()
-
-        add_transaction({
+        payload = {
             "person": person,
             "type": tipo,
             "category": categoria,
             "description": descricao,
             "value": valor,
             "date": str(data)
-        })
+        }
 
-        st.rerun()
+        r = add_transaction(payload)
+
+        if r.status_code == 200:
+            st.success("Adicionado com sucesso")
+            st.rerun()
+        else:
+            st.error("Erro ao adicionar")
+            st.write("Status:", r.status_code)
+            st.write("Resposta:", r.text)
+
 
     st.divider()
     st.subheader("Movimentos")
@@ -158,15 +161,15 @@ if page in ["Ruben", "Gabi"]:
 
         with st.expander(f"{row['type']} - {row['value']} €"):
 
+            st.write("Data:", row["date"])
+
             if row["type"].lower() == "despesa":
                 st.write("Categoria:", row["category"])
 
                 if row["category"] == "Outros":
                     st.write("Descrição:", row.get("description", ""))
 
-            st.write("Data:", row["date"])
-
-            # ================= EDIT =================
+            # EDITAR
             with st.form(f"edit_{row['id']}"):
 
                 new_type = st.selectbox(
@@ -192,7 +195,7 @@ if page in ["Ruben", "Gabi"]:
                     value=pd.to_datetime(row["date"])
                 )
 
-                if st.form_submit_button("Guardar alterações"):
+                if st.form_submit_button("Guardar"):
 
                     update_transaction(row["id"], {
                         "person": person,
@@ -211,11 +214,11 @@ if page in ["Ruben", "Gabi"]:
 
 
 # =========================
-# METAS (RESTAURADO COMPLETO)
+# METAS
 # =========================
 if page == "Metas":
 
-    st.title("Metas Financeiras")
+    st.title("Metas")
 
     nome = st.text_input("Nome da meta")
     objetivo = st.number_input("Objetivo (€)", min_value=0.0)
@@ -223,12 +226,18 @@ if page == "Metas":
     if st.button("Criar meta"):
 
         if nome.strip():
-            add_goal({
+            r = add_goal({
                 "name": nome,
                 "target_amount": objetivo,
                 "current_amount": 0
             })
-            st.rerun()
+
+            if r.status_code == 200:
+                st.success("Meta criada")
+                st.rerun()
+            else:
+                st.error("Erro ao criar meta")
+                st.write(r.text)
 
     st.divider()
 
@@ -239,13 +248,10 @@ if page == "Metas":
         target = g.get("target_amount", 0)
         progresso = min((saldo / target) * 100 if target else 0, 100)
 
-        st.markdown(f"""
-        **{g['name']}**
-        """)
-
+        st.write(f"**{g['name']}**")
         st.progress(progresso / 100)
 
-        if st.button("Eliminar meta", key=f"g_{g['id']}"):
+        if st.button("Eliminar meta", key=f"goal_{g['id']}"):
             delete_goal(g["id"])
             st.rerun()
 
