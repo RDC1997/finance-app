@@ -1,17 +1,12 @@
-
 import streamlit as st
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
 from datetime import date
 
-# =========================
-# API
-# =========================
 API = st.secrets.get("API", "http://127.0.0.1:8000")
 
 # =========================
-# DATA HELPERS
+# DATA
 # =========================
 def get_transactions():
     try:
@@ -20,30 +15,20 @@ def get_transactions():
             df = pd.DataFrame(r.json())
             if not df.empty:
                 df.columns = [c.lower() for c in df.columns]
-                df["date"] = pd.to_datetime(df["date"])
             return df
     except:
         pass
     return pd.DataFrame()
 
 
-def add_transaction(data):
-    requests.post(f"{API}/transaction", json=data)
-
-
-def delete_transaction(tid):
-    requests.delete(f"{API}/transaction/{tid}")
-
-
-def update_transaction(tid, data):
-    requests.put(f"{API}/transaction/{tid}", json=data)
-
-
 def get_categories():
     try:
         r = requests.get(f"{API}/categories")
         if r.ok:
-            return [c["name"] for c in r.json()]
+            cats = [c["name"] for c in r.json()]
+            if "Outros" not in cats:
+                cats.append("Outros")
+            return cats
     except:
         pass
     return ["Comida", "Casa", "Transportes", "Outros"]
@@ -59,49 +44,36 @@ def get_goals():
     return []
 
 
+def add_transaction(data):
+    requests.post(f"{API}/transaction", json=data)
+
+
+def delete_transaction(tid):
+    requests.delete(f"{API}/transaction/{tid}")
+
+
+def update_transaction(tid, data):
+    requests.put(f"{API}/transaction/{tid}", json=data)
+
+
 # =========================
 # CONFIG
 # =========================
 st.set_page_config(page_title="Finance App", layout="wide")
 
-st.markdown("""
-<style>
-.card {
-    padding: 12px;
-    border-radius: 12px;
-    background: #111827;
-    color: white;
-    margin-bottom: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# =========================
-# LOAD DATA
-# =========================
 df = get_transactions()
 categories = get_categories()
 goals = get_goals()
 
-
 # =========================
 # SIDEBAR
 # =========================
-st.sidebar.title("Finance App")
+st.sidebar.title("Finance")
 
 page = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Ruben", "Gabi", "Metas", "Categorias"]
 )
-
-
-# =========================
-# VALIDATION
-# =========================
-def validate_date(d):
-    return d <= date.today()
-
 
 # =========================
 # DASHBOARD
@@ -125,7 +97,7 @@ if page == "Dashboard":
 
 
 # =========================
-# RUBEN / GABI (CRUD COMPLETO)
+# RUBEN / GABI
 # =========================
 if page in ["Ruben", "Gabi"]:
 
@@ -142,8 +114,7 @@ if page in ["Ruben", "Gabi"]:
         categoria = st.selectbox("Categoria", categories)
 
         if categoria == "Outros":
-            st.warning("Descrição obrigatória")
-            descricao = st.text_area("Descrição")
+            descricao = st.text_area("Descrição obrigatória")
 
     col1, col2 = st.columns(2)
     valor = col1.number_input("Valor", min_value=0.0)
@@ -151,7 +122,7 @@ if page in ["Ruben", "Gabi"]:
 
     if st.button("Adicionar"):
 
-        if not validate_date(data):
+        if data > date.today():
             st.error("Data inválida")
             st.stop()
 
@@ -178,45 +149,63 @@ if page in ["Ruben", "Gabi"]:
 
     for _, row in df_p.iterrows():
 
-        with st.expander(f"{row['type']} - {row['value']} € ({row['date']})"):
+        with st.expander(f"{row['type']} - {row['value']} €"):
 
-            st.write("Categoria:", row["category"])
-            st.write("Descrição:", row["description"])
+            if row["type"].lower() == "despesa":
+                st.write("Categoria:", row["category"])
 
-            # ================= EDIT =================
-            with st.form(f"edit_{row['id']}"):
-                new_type = st.selectbox("Tipo", ["Salario", "Despesa"], index=0)
-                new_value = st.number_input("Valor", value=float(row["value"]))
-                new_cat = st.selectbox("Categoria", categories)
-                new_desc = st.text_input("Descrição", value=row.get("description", ""))
-                new_date = st.date_input("Data", value=row["date"])
+                if row["category"] == "Outros":
+                    st.write("Descrição:", row.get("description", ""))
 
-                if st.form_submit_button("Guardar alterações"):
-                    update_transaction(row["id"], {
-                        "person": person,
-                        "type": new_type,
-                        "category": new_cat,
-                        "description": new_desc,
-                        "value": new_value,
-                        "date": str(new_date)
-                    })
+            st.write("Data:", row["date"])
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("Editar", key=f"e_{row['id']}"):
+                    st.session_state["edit_id"] = row["id"]
+
+            with col2:
+                if st.button("Eliminar", key=f"d_{row['id']}"):
+                    delete_transaction(row["id"])
                     st.rerun()
-
-            # ================= DELETE =================
-            if st.button(f"Eliminar {row['id']}"):
-                delete_transaction(row["id"])
-                st.rerun()
 
 
 # =========================
-# METAS (simplificado aqui)
+# METAS
 # =========================
 if page == "Metas":
 
-    st.title("Metas")
+    st.title("Metas Financeiras")
+
+    nome = st.text_input("Nome da meta")
+    objetivo = st.number_input("Objetivo (€)", min_value=0.0)
+
+    if st.button("Criar meta"):
+
+        requests.post(f"{API}/goal", json={
+            "name": nome,
+            "target_amount": objetivo,
+            "current_amount": 0
+        })
+
+        st.rerun()
+
+    st.divider()
+
+    saldo = df["value"].sum() if not df.empty else 0
 
     for g in goals:
-        st.write(g)
+
+        target = g.get("target_amount", 0)
+        progresso = min((saldo / target) * 100 if target else 0, 100)
+
+        st.markdown(f"""
+        **{g['name']}**  
+        {progresso:.1f}% concluído
+        """)
+
+        st.progress(progresso / 100)
 
 
 # =========================
@@ -229,8 +218,20 @@ if page == "Categorias":
     nova = st.text_input("Nova categoria")
 
     if st.button("Adicionar"):
-        requests.post(f"{API}/categories", json={"name": nova})
-        st.rerun()
+
+        if nova.lower() != "outros":
+            requests.post(f"{API}/categories", json={"name": nova})
+            st.rerun()
+
+    st.divider()
 
     for c in categories:
-        st.write(c)
+
+        col1, col2 = st.columns([3, 1])
+
+        col1.write(c)
+
+        if c.lower() != "outros":
+            if col2.button("Eliminar", key=f"cat_{c}"):
+                requests.delete(f"{API}/categories/{c}")
+                st.rerun()
