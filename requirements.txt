@@ -1,10 +1,4 @@
-<<<<<<< HEAD
 fastapi
 uvicorn
 sqlalchemy
-=======
-fastapi
-uvicorn
-sqlalchemy
->>>>>>> 60e948eaf27a9199d92c79e87473e2887630a6b5
 psycopg2-binary
