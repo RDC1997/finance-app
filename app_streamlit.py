@@ -108,7 +108,7 @@ if page == "Dashboard":
 
 
 # =========================
-# RUBEN / GABI (CORRIGIDO CATEGORY NUNCA NULL)
+# RUBEN / GABI
 # =========================
 if page in ["Ruben", "Gabi"]:
 
@@ -117,7 +117,7 @@ if page in ["Ruben", "Gabi"]:
 
     tipo = st.selectbox("Tipo", ["Salario", "Despesa"])
 
-    categoria = "Salario"  # 👈 FIX IMPORTANTE (NUNCA NULL)
+    categoria = "Salario"
     descricao = ""
 
     if tipo == "Despesa":
@@ -137,27 +137,19 @@ if page in ["Ruben", "Gabi"]:
             st.stop()
 
         if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
-            st.error("Descrição obrigatória para 'Outros'")
+            st.error("Descrição obrigatória")
             st.stop()
 
-        payload = {
+        add_transaction({
             "person": person,
             "type": tipo,
-            "category": categoria,   # 👈 SEMPRE STRING
+            "category": categoria,
             "description": descricao,
             "value": valor,
             "date": str(data)
-        }
+        })
 
-        r = add_transaction(payload)
-
-        if r.status_code == 200:
-            st.success("Adicionado com sucesso")
-            st.rerun()
-        else:
-            st.error("Erro ao adicionar")
-            st.write(r.text)
-
+        st.rerun()
 
     st.divider()
     st.subheader("Movimentos")
@@ -166,17 +158,33 @@ if page in ["Ruben", "Gabi"]:
 
     for _, row in df_p.iterrows():
 
-        with st.expander(f"{row['type']} - {row['value']} €"):
+        # =========================
+        # VISUAL LIMPO (IMPORTANTE)
+        # =========================
+        if row["type"].lower() == "salario":
 
-            st.write("Data:", row["date"])
+            st.markdown(f"""
+            **Salário**  
+            {row['value']} € • {row['date']}
+            """)
 
-            if row["type"].lower() == "despesa":
-                st.write("Categoria:", row["category"])
+        else:
 
-                if row["category"] == "Outros":
-                    st.write("Descrição:", row.get("description", ""))
+            st.markdown(f"""
+            **Despesa**  
+            {row['value']} € • {row['date']}
+            """)
 
-            # EDIT
+            st.write("Categoria:", row["category"])
+
+            if row["category"] == "Outros":
+                st.write("Descrição:", row.get("description", ""))
+
+        # =========================
+        # EDITAR
+        # =========================
+        with st.expander("Editar"):
+
             with st.form(f"edit_{row['id']}"):
 
                 new_type = st.selectbox(
@@ -186,14 +194,18 @@ if page in ["Ruben", "Gabi"]:
                 )
 
                 new_category = "Salario"
+                new_description = ""
 
                 if new_type == "Despesa":
                     new_category = st.selectbox("Categoria", categories)
 
-                new_description = st.text_input(
-                    "Descrição",
-                    value=row.get("description", "")
-                )
+                    if new_category == "Outros":
+                        new_description = st.text_area(
+                            "Descrição obrigatória",
+                            value=row.get("description", "")
+                        )
+                    else:
+                        new_description = row.get("description", "")
 
                 new_value = st.number_input(
                     "Valor",
@@ -205,12 +217,16 @@ if page in ["Ruben", "Gabi"]:
                     value=pd.to_datetime(row["date"])
                 )
 
-                if st.form_submit_button("Guardar"):
+                if st.form_submit_button("Guardar alterações"):
+
+                    if new_type == "Despesa" and new_category == "Outros" and not new_description.strip():
+                        st.error("Descrição obrigatória")
+                        st.stop()
 
                     update_transaction(row["id"], {
                         "person": person,
                         "type": new_type,
-                        "category": new_category,  # 👈 SEMPRE STRING
+                        "category": new_category,
                         "description": new_description,
                         "value": new_value,
                         "date": str(new_date)
@@ -218,9 +234,9 @@ if page in ["Ruben", "Gabi"]:
 
                     st.rerun()
 
-            if st.button("Eliminar", key=f"del_{row['id']}"):
-                delete_transaction(row["id"])
-                st.rerun()
+        if st.button("Eliminar", key=f"del_{row['id']}"):
+            delete_transaction(row["id"])
+            st.rerun()
 
 
 # =========================
