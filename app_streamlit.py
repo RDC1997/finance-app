@@ -6,7 +6,7 @@ from datetime import date
 API = st.secrets.get("API", "http://127.0.0.1:8000")
 
 # =========================
-# DATA LAYER
+# DATA
 # =========================
 def get_transactions():
     try:
@@ -56,6 +56,15 @@ def delete_transaction(tid):
     requests.delete(f"{API}/transaction/{tid}")
 
 
+# GOALS
+def add_goal(data):
+    requests.post(f"{API}/goal", json=data)
+
+
+def delete_goal(gid):
+    requests.delete(f"{API}/goal/{gid}")
+
+
 # =========================
 # CONFIG
 # =========================
@@ -64,7 +73,6 @@ st.set_page_config(page_title="Finance App", layout="wide")
 df = get_transactions()
 categories = get_categories()
 goals = get_goals()
-
 
 # =========================
 # SIDEBAR
@@ -75,7 +83,6 @@ page = st.sidebar.radio(
     "Menu",
     ["Dashboard", "Ruben", "Gabi", "Metas", "Categorias"]
 )
-
 
 # =========================
 # DASHBOARD
@@ -115,8 +122,7 @@ if page in ["Ruben", "Gabi"]:
         categoria = st.selectbox("Categoria", categories)
 
         if categoria == "Outros":
-            st.warning("Descrição obrigatória para 'Outros'")
-            descricao = st.text_area("Descrição")
+            descricao = st.text_area("Descrição obrigatória")
 
     col1, col2 = st.columns(2)
     valor = col1.number_input("Valor", min_value=0.0)
@@ -125,7 +131,7 @@ if page in ["Ruben", "Gabi"]:
     if st.button("Adicionar"):
 
         if data > date.today():
-            st.error("Não podes usar datas futuras")
+            st.error("Data inválida")
             st.stop()
 
         if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
@@ -152,88 +158,96 @@ if page in ["Ruben", "Gabi"]:
 
         with st.expander(f"{row['type']} - {row['value']} €"):
 
-            st.write("Data:", row["date"])
-
             if row["type"].lower() == "despesa":
                 st.write("Categoria:", row["category"])
 
                 if row["category"] == "Outros":
                     st.write("Descrição:", row.get("description", ""))
 
-            col1, col2 = st.columns(2)
+            st.write("Data:", row["date"])
 
             # ================= EDIT =================
-            with col1:
+            with st.form(f"edit_{row['id']}"):
 
-                with st.form(f"edit_{row['id']}"):
+                new_type = st.selectbox(
+                    "Tipo",
+                    ["Salario", "Despesa"],
+                    index=0 if row["type"] == "Salario" else 1
+                )
 
-                    new_type = st.selectbox(
-                        "Tipo",
-                        ["Salario", "Despesa"],
-                        index=0 if row["type"] == "Salario" else 1
-                    )
+                new_category = st.selectbox("Categoria", categories)
 
-                    new_category = st.selectbox("Categoria", categories)
+                new_description = st.text_input(
+                    "Descrição",
+                    value=row.get("description", "")
+                )
 
-                    new_description = st.text_input(
-                        "Descrição",
-                        value=row.get("description", "")
-                    )
+                new_value = st.number_input(
+                    "Valor",
+                    value=float(row["value"])
+                )
 
-                    new_value = st.number_input(
-                        "Valor",
-                        value=float(row["value"])
-                    )
+                new_date = st.date_input(
+                    "Data",
+                    value=pd.to_datetime(row["date"])
+                )
 
-                    new_date = st.date_input(
-                        "Data",
-                        value=pd.to_datetime(row["date"])
-                    )
+                if st.form_submit_button("Guardar alterações"):
 
-                    if st.form_submit_button("Guardar alterações"):
+                    update_transaction(row["id"], {
+                        "person": person,
+                        "type": new_type,
+                        "category": new_category,
+                        "description": new_description,
+                        "value": new_value,
+                        "date": str(new_date)
+                    })
 
-                        update_transaction(row["id"], {
-                            "person": person,
-                            "type": new_type,
-                            "category": new_category,
-                            "description": new_description,
-                            "value": new_value,
-                            "date": str(new_date)
-                        })
-
-                        st.rerun()
-
-            # ================= DELETE =================
-            with col2:
-                if st.button("Eliminar", key=f"del_{row['id']}"):
-                    delete_transaction(row["id"])
                     st.rerun()
+
+            if st.button("Eliminar", key=f"del_{row['id']}"):
+                delete_transaction(row["id"])
+                st.rerun()
 
 
 # =========================
-# METAS
+# METAS (RESTAURADO COMPLETO)
 # =========================
 if page == "Metas":
 
-    st.title("Metas")
+    st.title("Metas Financeiras")
 
-    if not goals:
-        st.info("Ainda não tens metas criadas.")
-    else:
-        for g in goals:
+    nome = st.text_input("Nome da meta")
+    objetivo = st.number_input("Objetivo (€)", min_value=0.0)
 
-            target = g.get("target_amount", 0)
-            current = g.get("current_amount", 0)
+    if st.button("Criar meta"):
 
-            progresso = (current / target * 100) if target else 0
-            progresso = min(progresso, 100)
+        if nome.strip():
+            add_goal({
+                "name": nome,
+                "target_amount": objetivo,
+                "current_amount": 0
+            })
+            st.rerun()
 
-            st.markdown(f"""
-            **{g['name']}**  
-            {progresso:.1f}% concluído
-            """)
+    st.divider()
 
-            st.progress(progresso / 100)
+    saldo = df["value"].sum() if not df.empty else 0
+
+    for g in goals:
+
+        target = g.get("target_amount", 0)
+        progresso = min((saldo / target) * 100 if target else 0, 100)
+
+        st.markdown(f"""
+        **{g['name']}**
+        """)
+
+        st.progress(progresso / 100)
+
+        if st.button("Eliminar meta", key=f"g_{g['id']}"):
+            delete_goal(g["id"])
+            st.rerun()
 
 
 # =========================
