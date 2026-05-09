@@ -82,9 +82,6 @@ if page in ["Ruben", "Gabi"]:
     categoria = "Salario"
     descricao = ""
 
-    # =========================
-    # INPUT DINÂMICO
-    # =========================
     if tipo == "Despesa":
         categoria = st.selectbox("Categoria", categories)
 
@@ -97,11 +94,11 @@ if page in ["Ruben", "Gabi"]:
     if st.button("Adicionar"):
 
         if data > date.today():
-            st.error("Data inválida")
+            st.error("Não podes inserir datas futuras")
             st.stop()
 
         if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
-            st.error("Descrição obrigatória")
+            st.error("Descrição obrigatória para 'Outros'")
             st.stop()
 
         add_transaction({
@@ -117,12 +114,12 @@ if page in ["Ruben", "Gabi"]:
 
 
 # =========================
-# MOVIMENTOS (SEM st.divider)
+# MOVIMENTOS
 # =========================
 st.markdown("---")
 st.subheader("Movimentos")
 
-df_p = df[df["person"] == person] if not df.empty else pd.DataFrame()
+df_p = df[df["person"] == page] if not df.empty else pd.DataFrame()
 
 for _, row in df_p.iterrows():
 
@@ -182,7 +179,7 @@ for _, row in df_p.iterrows():
                     st.stop()
 
                 update_transaction(row["id"], {
-                    "person": person,
+                    "person": page,
                     "type": new_type,
                     "category": new_category,
                     "description": new_description,
