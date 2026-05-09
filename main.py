@@ -6,6 +6,9 @@ from datetime import date
 from database import engine, SessionLocal, Base
 from models import Transaction, Category, Goal
 
+# IMPORT DOS SCHEMAS (NOVO)
+from schemas import TransactionCreate, CategoryCreate, GoalCreate
+
 # =========================
 # DB INIT
 # =========================
@@ -50,10 +53,10 @@ def validate_date(input_date: str):
             detail="Data futura não permitida"
         )
 
-def validate_outros(transaction: dict):
+def validate_outros(transaction):
     if (
-        transaction.get("type") == "Despesa"
-        and transaction.get("category") == "Outros"
+        transaction.get("type") == "expense"
+        and transaction.get("category") == "outros"
         and not transaction.get("description")
     ):
         raise HTTPException(
@@ -69,12 +72,12 @@ def get_transactions(db: Session = Depends(get_db)):
     return db.query(Transaction).all()
 
 @app.post("/transaction")
-def add_transaction(data: dict, db: Session = Depends(get_db)):
+def add_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
 
-    validate_date(data["date"])
-    validate_outros(data)
+    validate_date(data.date)
+    validate_outros(data.dict())
 
-    transaction = Transaction(**data)
+    transaction = Transaction(**data.dict())
 
     db.add(transaction)
     db.commit()
@@ -110,11 +113,11 @@ def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
 
 @app.post("/categories")
-def add_category(data: dict, db: Session = Depends(get_db)):
+def add_category(data: CategoryCreate, db: Session = Depends(get_db)):
 
     exists = (
         db.query(Category)
-        .filter(Category.name == data["name"])
+        .filter(Category.name == data.name)
         .first()
     )
 
@@ -124,7 +127,7 @@ def add_category(data: dict, db: Session = Depends(get_db)):
             detail="Categoria já existe"
         )
 
-    category = Category(name=data["name"])
+    category = Category(name=data.name)
 
     db.add(category)
     db.commit()
@@ -166,9 +169,9 @@ def get_goals(db: Session = Depends(get_db)):
     return db.query(Goal).all()
 
 @app.post("/goal")
-def add_goal(data: dict, db: Session = Depends(get_db)):
+def add_goal(data: GoalCreate, db: Session = Depends(get_db)):
 
-    goal = Goal(**data)
+    goal = Goal(**data.dict())
 
     db.add(goal)
     db.commit()

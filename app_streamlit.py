@@ -1,11 +1,69 @@
 import streamlit as st
 import requests
 import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import date
 
 API = "http://127.0.0.1:8000"
 
+
+# =========================
+# FUNÇÕES
+# =========================
+def calculate_savings(df):
+    if df.empty:
+        return 0
+
+    receitas = df[df["type"].str.lower() == "salario"]["value"].sum()
+    despesas = df[df["type"].str.lower() == "despesa"]["value"].sum()
+
+    return receitas - despesas
+
+
+def get_transactions():
+    try:
+        r = requests.get(f"{API}/transactions")
+        if r.ok:
+            df = pd.DataFrame(r.json())
+            if not df.empty:
+                df.columns = [c.lower() for c in df.columns]
+                df["date"] = pd.to_datetime(df["date"])
+            return df
+    except:
+        pass
+    return pd.DataFrame()
+
+
+def add_transaction(data):
+    requests.post(f"{API}/transaction", json=data)
+
+
+def get_categories():
+    try:
+        r = requests.get(f"{API}/categories")
+        if r.ok:
+            return [c["name"] for c in r.json()]
+    except:
+        pass
+    return ["Comida", "Casa", "Transportes", "Outros"]
+
+
+def get_goals():
+    try:
+        r = requests.get(f"{API}/goals")
+        if r.ok:
+            return r.json()
+    except:
+        pass
+    return []
+
+
+# =========================
+# CONFIG
+# =========================
 st.set_page_config(page_title="Finance App", layout="wide")
+
+API = "https://finance-app-backend-xvo2.onrender.com"
 
 
 # =========================
@@ -44,35 +102,6 @@ st.markdown("""
 
 
 # =========================
-# API
-# =========================
-def get_transactions():
-    r = requests.get(f"{API}/transactions")
-    df = pd.DataFrame(r.json() if r.ok else [])
-    if not df.empty:
-        df.columns = [c.lower() for c in df.columns]
-    return df
-
-
-def add_transaction(data):
-    requests.post(f"{API}/transaction", json=data)
-
-
-def delete_transaction(id):
-    requests.delete(f"{API}/transaction/{id}")
-
-
-def get_categories():
-    r = requests.get(f"{API}/categories")
-    return [c["name"] for c in r.json()] if r.ok else ["Comida", "Casa", "Transportes", "Outros"]
-
-
-def get_goals():
-    r = requests.get(f"{API}/goals")
-    return r.json() if r.ok else []
-
-
-# =========================
 # DATA
 # =========================
 df = get_transactions()
@@ -98,8 +127,8 @@ if page == "🏠 Dashboard":
 
     st.title("Dashboard Financeiro")
 
-    receitas = df[df["type"].str.contains("Sal")]["value"].sum() if not df.empty else 0
-    despesas = df[df["type"].str.contains("Desp")]["value"].sum() if not df.empty else 0
+    receitas = df[df["type"].str.lower() == "salario"]["value"].sum() if not df.empty else 0
+    despesas = df[df["type"].str.lower() == "despesa"]["value"].sum() if not df.empty else 0
     saldo = receitas - despesas
 
     c1, c2, c3 = st.columns(3)
@@ -110,13 +139,59 @@ if page == "🏠 Dashboard":
 
     st.divider()
 
+    # =========================
+    # GRÁFICO 1 - EVOLUÇÃO
+    # =========================
+    st.subheader("Evolução financeira")
+
+    if not df.empty:
+
+        df_sorted = df.sort_values("date")
+
+        df_sorted["mov"] = df_sorted.apply(
+            lambda x: x["value"] if x["type"].lower() == "salario" else -x["value"],
+            axis=1
+        )
+
+        df_sorted["saldo"] = df_sorted["mov"].cumsum()
+
+        fig, ax = plt.subplots()
+        ax.plot(df_sorted["date"], df_sorted["saldo"])
+        ax.set_title("Evolução do saldo")
+        ax.set_xlabel("Data")
+        ax.set_ylabel("Saldo (€)")
+
+        st.pyplot(fig)
+
+    # =========================
+    # GRÁFICO 2 - CATEGORIAS
+    # =========================
+    st.subheader("Gastos por categoria")
+
+    if not df.empty:
+
+        despesas = df[df["type"].str.lower() == "despesa"]
+
+        if not despesas.empty:
+
+            categorias = despesas.groupby("category")["value"].sum()
+
+            fig2, ax2 = plt.subplots()
+            ax2.bar(categorias.index, categorias.values)
+
+            ax2.set_title("Despesas por categoria")
+            ax2.set_ylabel("€")
+
+            st.pyplot(fig2)
+
+    st.divider()
+
     st.subheader("Últimos movimentos")
 
     if df.empty:
         st.info("Sem dados ainda")
     else:
         for _, row in df.tail(8).iterrows():
-
             st.markdown(f"""
             <div class="card">
                 <b>{row['type']}</b> • {row['category']} <br>
@@ -126,7 +201,7 @@ if page == "🏠 Dashboard":
 
 
 # =========================
-# RUBEN / GABI (FIX FINAL OUTROS)
+# RUBEN / GABI
 # =========================
 if page in ["👨 Ruben", "👩 Gabi"]:
 
@@ -134,16 +209,14 @@ if page in ["👨 Ruben", "👩 Gabi"]:
 
     st.title(person)
 
-    tipo = st.selectbox("Tipo", ["Salário", "Despesa"])
+    tipo = st.selectbox("Tipo", ["Salario", "Despesa"])
 
     categoria = None
     descricao = ""
 
     if tipo == "Despesa":
-
         categoria = st.selectbox("Categoria", categories)
 
-        # 🔥 REGRA FIXA (NÃO DESAPARECE MAIS)
         if categoria == "Outros":
             st.warning("Categoria 'Outros' obriga descrição")
             descricao = st.text_area("Descrição obrigatória")
@@ -159,7 +232,7 @@ if page in ["👨 Ruben", "👩 Gabi"]:
 
     if st.button("Adicionar"):
 
-        if tipo == "Despesa" and categoria == "Outros" and (not descricao or descricao.strip() == ""):
+        if tipo == "Despesa" and categoria == "Outros" and not descricao.strip():
             st.error("Descrição obrigatória para 'Outros'")
             st.stop()
 
@@ -179,11 +252,9 @@ if page in ["👨 Ruben", "👩 Gabi"]:
     st.subheader("Movimentos")
 
     if not df.empty:
-
         df_p = df[df["person"] == person]
 
         for _, row in df_p.tail(10).iterrows():
-
             st.markdown(f"""
             <div class="card">
                 <b>{row['type']}</b> - {row['category']} <br>
@@ -205,26 +276,33 @@ if page == "🎯 Metas":
 
     if st.button("Criar meta"):
 
-        if nome:
+        if nome.strip():
             requests.post(f"{API}/goal", json={
                 "name": nome,
                 "description": desc,
-                "target": objetivo
+                "target_amount": objetivo,
+                "current_amount": 0
             })
+
             st.rerun()
 
     st.divider()
 
-    saldo = df["value"].sum() if not df.empty else 0
+    saldo = calculate_savings(df)
 
     for g in goals:
 
-        progresso = min((saldo / g["target"]) * 100 if g["target"] else 0, 100)
+        target = g.get("target_amount", 0)
+
+        if target > 0:
+            progresso = min((saldo / target) * 100, 100)
+        else:
+            progresso = 0
 
         st.markdown(f"""
         <div class="card">
             <b>{g['name']}</b><br>
-            {g['description']}<br><br>
+            {g.get('description','')}<br><br>
             Progresso: {progresso:.1f}%
         </div>
         """, unsafe_allow_html=True)
@@ -242,8 +320,9 @@ if page == "🏷 Categorias":
     nova = st.text_input("Nova categoria")
 
     if st.button("Adicionar"):
-        requests.post(f"{API}/categories", json={"name": nova})
-        st.rerun()
+        if nova.strip():
+            requests.post(f"{API}/categories", json={"name": nova})
+            st.rerun()
 
     st.divider()
 
