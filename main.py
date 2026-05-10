@@ -5,23 +5,12 @@ from datetime import date
 
 from database import engine, SessionLocal, Base
 from models import Transaction, Category, Goal
-
-# IMPORT DOS SCHEMAS (NOVO)
 from schemas import TransactionCreate, CategoryCreate, GoalCreate
 
-# =========================
-# DB INIT
-# =========================
 Base.metadata.create_all(bind=engine)
 
-# =========================
-# APP
-# =========================
 app = FastAPI()
 
-# =========================
-# CORS
-# =========================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -33,9 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =========================
-# DATABASE SESSION
-# =========================
 def get_db():
     db = SessionLocal()
     try:
@@ -43,207 +29,147 @@ def get_db():
     finally:
         db.close()
 
-# =========================
-# VALIDATION
-# =========================
-def validate_date(input_date: str):
-    if input_date > str(date.today()):
-        raise HTTPException(
-            status_code=400,
-            detail="Data futura não permitida"
-        )
 
-def validate_outros(transaction):
+def validate_date(d):
+    if d > str(date.today()):
+        raise HTTPException(status_code=400, detail="Data futura não permitida")
+
+
+def validate_outros(p):
     if (
-        transaction.get("type") == "expense"
-        and transaction.get("category") == "outros"
-        and not transaction.get("description")
+        p.get("type", "").lower() == "despesa"
+        and p.get("category", "").lower() == "outros"
+        and not p.get("description")
     ):
         raise HTTPException(
             status_code=400,
             detail="Descrição obrigatória para categoria 'Outros'"
         )
 
-# =========================
-# TRANSACTIONS
-# =========================
+
 @app.get("/transactions")
 def get_transactions(db: Session = Depends(get_db)):
     return db.query(Transaction).all()
 
+
 @app.post("/transaction")
 def add_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
+    payload = data.dict()
 
-    validate_date(data.date)
-    validate_outros(data.dict())
+    validate_date(payload["date"])
+    validate_outros(payload)
 
-    transaction = Transaction(**data.dict())
-
-    db.add(transaction)
+    t = Transaction(**payload)
+    db.add(t)
     db.commit()
-    db.refresh(transaction)
+    db.refresh(t)
 
-    return transaction
+    return t
 
-<<<<<<< HEAD
-=======
 
 @app.put("/transaction/{id}")
 def update_transaction(id: int, data: TransactionCreate, db: Session = Depends(get_db)):
 
-    transaction = db.query(Transaction).filter(Transaction.id == id).first()
+    t = db.query(Transaction).filter(Transaction.id == id).first()
 
-    if not transaction:
+    if not t:
         raise HTTPException(status_code=404, detail="Transação não encontrada")
 
     payload = data.dict()
 
-<<<<<<< HEAD
-    if payload["date"] > str(date.today()):
-        raise HTTPException(status_code=400, detail="Data futura não permitida")
-
-    if (
-        payload["type"] == "Despesa"
-        and payload["category"] == "Outros"
-        and not payload["description"]
-    ):
-        raise HTTPException(status_code=400, detail="Descrição obrigatória para Outros")
-
-    transaction.person = payload["person"]
-    transaction.type = payload["type"]
-    transaction.category = payload["category"]
-    transaction.description = payload["description"]
-    transaction.value = payload["value"]
-    transaction.date = payload["date"]
-=======
     payload["type"] = payload["type"].strip()
-    payload["category"] = payload["category"] or ""
-    payload["description"] = payload["description"] or ""
+    payload["category"] = payload.get("category") or ""
+    payload["description"] = payload.get("description") or ""
 
     validate_date(payload["date"])
     validate_outros(payload)
 
     for k, v in payload.items():
-        setattr(transaction, k, v)
->>>>>>> df9065d (fix update transaction and sync backend)
+        setattr(t, k, v)
 
     db.commit()
-    db.refresh(transaction)
+    db.refresh(t)
 
-    return transaction
+    return t
 
 
->>>>>>> b78e052 (fix: resolve backend merge conflicts + stabilize update endpoint)
 @app.delete("/transaction/{id}")
 def delete_transaction(id: int, db: Session = Depends(get_db)):
 
-    transaction = (
-        db.query(Transaction)
-        .filter(Transaction.id == id)
-        .first()
-    )
+    t = db.query(Transaction).filter(Transaction.id == id).first()
 
-    if not transaction:
-        raise HTTPException(
-            status_code=404,
-            detail="Transação não encontrada"
-        )
+    if not t:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
 
-    db.delete(transaction)
+    db.delete(t)
     db.commit()
 
     return {"ok": True}
 
-# =========================
-# CATEGORIES
-# =========================
+
 @app.get("/categories")
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
 
+
 @app.post("/categories")
 def add_category(data: CategoryCreate, db: Session = Depends(get_db)):
 
-    exists = (
-        db.query(Category)
-        .filter(Category.name == data.name)
-        .first()
-    )
+    exists = db.query(Category).filter(Category.name == data.name).first()
 
     if exists:
-        raise HTTPException(
-            status_code=400,
-            detail="Categoria já existe"
-        )
+        raise HTTPException(status_code=400, detail="Categoria já existe")
 
-    category = Category(name=data.name)
-
-    db.add(category)
+    c = Category(name=data.name)
+    db.add(c)
     db.commit()
-    db.refresh(category)
+    db.refresh(c)
 
-    return category
+    return c
+
 
 @app.delete("/categories/{id}")
 def delete_category(id: int, db: Session = Depends(get_db)):
 
-    category = (
-        db.query(Category)
-        .filter(Category.id == id)
-        .first()
-    )
+    c = db.query(Category).filter(Category.id == id).first()
 
-    if not category:
-        raise HTTPException(
-            status_code=404,
-            detail="Categoria não existe"
-        )
+    if not c:
+        raise HTTPException(status_code=404, detail="Categoria não existe")
 
-    if category.name.lower() == "outros":
-        raise HTTPException(
-            status_code=400,
-            detail="Categoria protegida"
-        )
+    if c.name.lower() == "outros":
+        raise HTTPException(status_code=400, detail="Categoria protegida")
 
-    db.delete(category)
+    db.delete(c)
     db.commit()
 
     return {"ok": True}
 
-# =========================
-# GOALS
-# =========================
+
 @app.get("/goals")
 def get_goals(db: Session = Depends(get_db)):
     return db.query(Goal).all()
 
+
 @app.post("/goal")
 def add_goal(data: GoalCreate, db: Session = Depends(get_db)):
 
-    goal = Goal(**data.dict())
-
-    db.add(goal)
+    g = Goal(**data.dict())
+    db.add(g)
     db.commit()
-    db.refresh(goal)
+    db.refresh(g)
 
-    return goal
+    return g
+
 
 @app.delete("/goal/{id}")
 def delete_goal(id: int, db: Session = Depends(get_db)):
 
-    goal = (
-        db.query(Goal)
-        .filter(Goal.id == id)
-        .first()
-    )
+    g = db.query(Goal).filter(Goal.id == id).first()
 
-    if not goal:
-        raise HTTPException(
-            status_code=404,
-            detail="Meta não encontrada"
-        )
+    if not g:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
 
-    db.delete(goal)
+    db.delete(g)
     db.commit()
 
     return {"ok": True}
