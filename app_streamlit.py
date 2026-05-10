@@ -23,56 +23,188 @@ st.set_page_config(
 # =========================
 st.markdown("""
 <style>
+    :root {
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --accent: #ef4444;
+        --green: #16a34a;
+        --red: #dc2626;
+        --blue: #2563eb;
+    }
+
+    .stApp {
+        background: var(--bg);
+        color: var(--text);
+    }
+
+    section[data-testid="stSidebar"] {
+        background: #ffffff;
+        border-right: 1px solid var(--line);
+    }
+
+    section[data-testid="stSidebar"] * {
+        color: #111827 !important;
+    }
+
+    .block-container {
+        padding-top: 42px;
+        padding-bottom: 48px;
+        max-width: 1380px;
+    }
+
+    h1, h2, h3, label, p, span, div {
+        color: #111827;
+    }
+
     .title {
-        font-size: 30px;
-        font-weight: 800;
+        font-size: 34px;
+        font-weight: 850;
+        letter-spacing: -0.8px;
         margin-bottom: 4px;
     }
 
     .subtitle {
-        color: #64748b;
-        font-size: 14px;
-        margin-bottom: 18px;
+        color: var(--muted);
+        font-size: 15px;
+        margin-bottom: 28px;
+    }
+
+    .section-title {
+        font-size: 23px;
+        font-weight: 800;
+        margin-top: 14px;
+        margin-bottom: 14px;
     }
 
     .card {
-        padding: 16px;
-        border-radius: 14px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 10px;
-    }
-
-    .card-title {
-        color: #64748b;
-        font-size: 13px;
-        margin-bottom: 5px;
-    }
-
-    .card-value {
-        color: #0f172a;
-        font-size: 24px;
-        font-weight: 800;
-    }
-
-    .simple-box {
-        padding: 14px;
-        border-radius: 12px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
         margin-bottom: 12px;
     }
 
-    .small-text {
-        color: #64748b;
+    .card-title {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+
+    .card-value {
+        color: var(--text);
+        font-size: 27px;
+        font-weight: 850;
+        letter-spacing: -0.6px;
+    }
+
+    .clean-box {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+        margin-bottom: 14px;
+    }
+
+    .movement-card {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+
+    .movement-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .movement-title {
+        font-weight: 800;
+        font-size: 15px;
+    }
+
+    .movement-meta {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .income {
+        color: var(--green);
+        font-size: 17px;
+        font-weight: 850;
+    }
+
+    .expense {
+        color: var(--red);
+        font-size: 17px;
+        font-weight: 850;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .small-muted {
+        color: var(--muted);
         font-size: 13px;
     }
 
-    div[data-testid="stMetric"] {
+    div[data-testid="stDataFrame"] {
         background: #ffffff;
-        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        padding: 6px;
+    }
+
+    div[data-testid="stHorizontalBlock"] {
+        gap: 16px;
+    }
+
+    .stButton > button {
         border-radius: 12px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #111827;
+        font-weight: 700;
+        padding: 9px 16px;
+    }
+
+    .stButton > button:hover {
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    div[data-baseweb="select"] > div,
+    input,
+    textarea {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-radius: 12px !important;
+        border-color: #d1d5db !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: #111827 !important;
+    }
+
+    hr {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 28px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,10 +218,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     DATABASE_URL = st.secrets["DATABASE_URL"]
 
-DATABASE_URL = DATABASE_URL.replace(
-    "postgresql://",
-    "postgresql+psycopg://"
-)
+DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
 
 
 @st.cache_resource
@@ -156,6 +285,31 @@ def card(title, value):
     """, unsafe_allow_html=True)
 
 
+def clean_title(title, subtitle=""):
+    st.markdown(f'<div class="title">{title}</div>', unsafe_allow_html=True)
+    if subtitle:
+        st.markdown(f'<div class="subtitle">{subtitle}</div>', unsafe_allow_html=True)
+
+
+def movement_card(row):
+    value_class = "income" if str(row["type"]).lower() == "salário" else "expense"
+    signal = "+" if str(row["type"]).lower() == "salário" else "-"
+    desc = str(row["description"] or "").strip()
+    desc_text = f" · {desc}" if desc else ""
+
+    st.markdown(f"""
+    <div class="movement-card">
+        <div class="movement-top">
+            <div>
+                <div class="movement-title">{row["category"]}</div>
+                <div class="movement-meta">{row["person"]} · {row["type"]} · {row["date"]}{desc_text}</div>
+            </div>
+            <div class="{value_class}">{signal}{money(row["value"])}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 @st.cache_data(ttl=20)
 def load_transactions():
     with engine.begin() as conn:
@@ -163,8 +317,8 @@ def load_transactions():
 
     if df.empty:
         return pd.DataFrame(columns=[
-            "id", "person", "type", "category", "description", "value", "date",
-            "date_dt", "year", "month"
+            "id", "person", "type", "category", "description",
+            "value", "date", "date_dt", "year", "month"
         ])
 
     df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
@@ -182,26 +336,17 @@ def load_categories():
 
     if df.empty:
         defaults = [
-            "Casa",
-            "Comida",
-            "Transportes",
-            "Lazer",
-            "Saúde",
-            "Compras",
-            "Contas",
-            "Outros"
+            "Casa", "Comida", "Transportes", "Lazer",
+            "Saúde", "Compras", "Contas", "Outros"
         ]
 
         with engine.begin() as conn:
             for item in defaults:
-                conn.execute(
-                    text("""
+                conn.execute(text("""
                     INSERT INTO categories (name)
                     VALUES (:name)
                     ON CONFLICT (name) DO NOTHING
-                    """),
-                    {"name": item}
-                )
+                """), {"name": item})
 
         return load_categories()
 
@@ -296,7 +441,9 @@ def filter_data(dataframe):
 
 
 def transaction_label(row):
-    return f"{row['id']} | {row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}"
+    desc = str(row["description"] or "").strip()
+    extra = f" | {desc}" if desc else ""
+    return f"{row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}{extra}"
 
 
 # =========================
@@ -305,6 +452,7 @@ def transaction_label(row):
 df = load_transactions()
 categories_df = load_categories()
 goals_df = load_goals()
+
 categories = categories_df["name"].tolist()
 
 if "Outros" not in categories:
@@ -318,15 +466,7 @@ st.sidebar.title("💰 Rubi & Gabi")
 
 page = st.sidebar.radio(
     "Menu",
-    [
-        "Dashboard",
-        "Ruben",
-        "Gabi",
-        "Casal",
-        "Metas",
-        "Categorias",
-        "Exportar"
-    ]
+    ["Dashboard", "Ruben", "Gabi", "Casal", "Metas", "Categorias", "Exportar"]
 )
 
 filtered_df = filter_data(df)
@@ -336,8 +476,7 @@ filtered_df = filter_data(df)
 # DASHBOARD
 # =========================
 if page == "Dashboard":
-    st.markdown('<div class="title">Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Resumo simples e direto das vossas finanças.</div>', unsafe_allow_html=True)
+    clean_title("Dashboard", "Visão geral simples das vossas contas.")
 
     receitas = filtered_df[filtered_df["type"].str.lower() == "salário"]["value"].sum() if not filtered_df.empty else 0
     despesas = filtered_df[filtered_df["type"].str.lower() == "despesa"]["value"].sum() if not filtered_df.empty else 0
@@ -347,122 +486,127 @@ if page == "Dashboard":
 
     with c1:
         card("Receitas", money(receitas))
-
     with c2:
         card("Despesas", money(despesas))
-
     with c3:
-        card("Saldo", money(saldo))
-
-    st.markdown("---")
+        card("Saldo disponível", money(saldo))
 
     if filtered_df.empty:
         st.info("Não existem movimentos para os filtros escolhidos.")
     else:
         despesas_df = filtered_df[filtered_df["type"].str.lower() == "despesa"]
 
-        c1, c2 = st.columns([1, 1])
+        st.markdown('<div class="section-title">Resumo rápido</div>', unsafe_allow_html=True)
 
-        with c1:
-            st.subheader("Principais despesas")
+        col1, col2 = st.columns([1.1, 0.9])
+
+        with col1:
+            st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+            st.markdown("#### Para onde foi o dinheiro")
 
             if despesas_df.empty:
                 st.info("Sem despesas.")
             else:
                 resumo = despesas_df.groupby("category", as_index=False)["value"].sum()
-                resumo = resumo.sort_values("value", ascending=False).head(5)
+                resumo = resumo.sort_values("value", ascending=True).tail(5)
 
                 fig = px.bar(
                     resumo,
                     x="value",
                     y="category",
                     orientation="h",
-                    text="value"
+                    text=resumo["value"].apply(money)
                 )
 
                 fig.update_traces(
-                    texttemplate="%{text:.2f}€",
-                    textposition="outside"
+                    textposition="outside",
+                    marker_color="#ef4444"
                 )
 
                 fig.update_layout(
                     height=260,
-                    margin=dict(l=10, r=10, t=10, b=10),
+                    margin=dict(l=8, r=8, t=8, b=8),
                     xaxis_title="",
                     yaxis_title="",
-                    showlegend=False
+                    showlegend=False,
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
+                    font=dict(color="#111827")
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
 
-        with c2:
-            st.subheader("Resumo por pessoa")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            resumo_pessoa = filtered_df.groupby("person", as_index=False)["value"].sum()
+        with col2:
+            st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+            st.markdown("#### Por pessoa")
 
-            if resumo_pessoa.empty:
-                st.info("Sem dados.")
-            else:
-                for _, row in resumo_pessoa.iterrows():
-                    st.markdown(f"""
-                    <div class="simple-box">
-                        <strong>{row['person']}</strong><br>
-                        <span class="small-text">Total movimentado</span><br>
-                        <strong>{money(row['value'])}</strong>
+            for person in ["Ruben", "Gabi"]:
+                person_df = filtered_df[filtered_df["person"] == person]
+                person_receitas = person_df[person_df["type"].str.lower() == "salário"]["value"].sum()
+                person_despesas = person_df[person_df["type"].str.lower() == "despesa"]["value"].sum()
+                person_saldo = person_receitas - person_despesas
+
+                st.markdown(f"""
+                <div class="movement-card">
+                    <div class="movement-top">
+                        <div>
+                            <div class="movement-title">{person}</div>
+                            <div class="movement-meta">Receitas {money(person_receitas)} · Despesas {money(person_despesas)}</div>
+                        </div>
+                        <div class="income">{money(person_saldo)}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                </div>
+                """, unsafe_allow_html=True)
 
-        st.markdown("---")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        st.subheader("Últimos movimentos")
+        st.markdown('<div class="section-title">Últimos movimentos</div>', unsafe_allow_html=True)
 
-        st.dataframe(
-            filtered_df[["person", "type", "category", "description", "value", "date"]].head(10),
-            use_container_width=True,
-            hide_index=True
-        )
+        for _, row in filtered_df.head(6).iterrows():
+            movement_card(row)
 
 
 # =========================
 # PESSOAS / CASAL
 # =========================
 elif page in ["Ruben", "Gabi", "Casal"]:
-    st.markdown(f'<div class="title">{page}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Adicionar, editar e remover movimentos.</div>', unsafe_allow_html=True)
+    clean_title(page, "Adicionar, consultar, editar e remover movimentos.")
 
     person_options = ["Ruben", "Gabi"] if page == "Casal" else [page]
 
-    st.subheader("Adicionar movimento")
+    st.markdown('<div class="section-title">Adicionar movimento</div>', unsafe_allow_html=True)
 
-    with st.form(f"add_form_{page}"):
+    with st.container():
+        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+
         col1, col2 = st.columns(2)
 
         with col1:
-            person = st.selectbox("Pessoa", person_options)
+            person = st.selectbox("Pessoa", person_options, key=f"add_person_{page}")
 
         with col2:
-            movement_type = st.selectbox("Tipo", ["Salário", "Despesa"])
+            movement_type = st.selectbox("Tipo", ["Salário", "Despesa"], key=f"add_type_{page}")
 
         category = "Salário"
         description = ""
 
         if movement_type == "Despesa":
-            category = st.selectbox("Categoria", categories)
+            category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
 
             if category == "Outros":
-                description = st.text_input("Descrição obrigatória")
+                description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
 
         col3, col4 = st.columns(2)
 
         with col3:
-            value = st.number_input("Valor", min_value=0.0, step=1.0)
+            value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{page}")
 
         with col4:
-            movement_date = st.date_input("Data", value=date.today(), max_value=date.today())
+            movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
 
-        submit = st.form_submit_button("Adicionar")
-
-        if submit:
+        if st.button("Adicionar movimento", key=f"add_button_{page}"):
             if value <= 0:
                 st.error("O valor tem de ser superior a zero.")
             elif movement_type == "Despesa" and category == "Outros" and not description.strip():
@@ -487,7 +631,7 @@ elif page in ["Ruben", "Gabi", "Casal"]:
                 st.success("Movimento adicionado.")
                 st.rerun()
 
-    st.markdown("---")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     page_df = filtered_df[filtered_df["person"].isin(person_options)] if not filtered_df.empty else pd.DataFrame()
 
@@ -499,28 +643,30 @@ elif page in ["Ruben", "Gabi", "Casal"]:
 
     with c1:
         card("Receitas", money(receitas))
-
     with c2:
         card("Despesas", money(despesas))
-
     with c3:
         card("Saldo", money(saldo))
 
-    st.markdown("---")
-
-    st.subheader("Movimentos")
+    st.markdown('<div class="section-title">Movimentos recentes</div>', unsafe_allow_html=True)
 
     if page_df.empty:
         st.info("Sem movimentos para mostrar.")
     else:
-        st.dataframe(
-            page_df[["id", "person", "type", "category", "description", "value", "date"]],
-            use_container_width=True,
-            hide_index=True
-        )
+        for _, row in page_df.head(8).iterrows():
+            movement_card(row)
 
-        st.markdown("---")
-        st.subheader("Editar ou remover")
+        with st.expander("Ver tabela completa"):
+            table_df = page_df[["person", "type", "category", "description", "value", "date"]].copy()
+            table_df.columns = ["Pessoa", "Tipo", "Categoria", "Descrição", "Valor", "Data"]
+
+            st.dataframe(
+                table_df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        st.markdown('<div class="section-title">Editar ou remover movimento</div>', unsafe_allow_html=True)
 
         options = {
             transaction_label(row): int(row["id"])
@@ -536,59 +682,67 @@ elif page in ["Ruben", "Gabi", "Casal"]:
         selected_id = options[selected_label]
         selected_row = page_df[page_df["id"] == selected_id].iloc[0]
 
-        with st.form(f"edit_form_{page}"):
-            col1, col2 = st.columns(2)
+        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
 
-            with col1:
-                edit_person = st.selectbox(
-                    "Pessoa",
-                    ["Ruben", "Gabi"],
-                    index=["Ruben", "Gabi"].index(selected_row["person"]) if selected_row["person"] in ["Ruben", "Gabi"] else 0
+        col1, col2 = st.columns(2)
+
+        with col1:
+            edit_person = st.selectbox(
+                "Pessoa",
+                ["Ruben", "Gabi"],
+                index=["Ruben", "Gabi"].index(selected_row["person"]) if selected_row["person"] in ["Ruben", "Gabi"] else 0,
+                key=f"edit_person_{page}_{selected_id}"
+            )
+
+        with col2:
+            edit_type = st.selectbox(
+                "Tipo",
+                ["Salário", "Despesa"],
+                index=["Salário", "Despesa"].index(selected_row["type"]) if selected_row["type"] in ["Salário", "Despesa"] else 0,
+                key=f"edit_type_{page}_{selected_id}"
+            )
+
+        edit_category = "Salário"
+        edit_description = ""
+
+        if edit_type == "Despesa":
+            edit_category = st.selectbox(
+                "Categoria",
+                categories,
+                index=categories.index(selected_row["category"]) if selected_row["category"] in categories else 0,
+                key=f"edit_category_{page}_{selected_id}"
+            )
+
+            if edit_category == "Outros":
+                edit_description = st.text_input(
+                    "Descrição obrigatória",
+                    value=str(selected_row["description"] or ""),
+                    key=f"edit_description_{page}_{selected_id}"
                 )
 
-            with col2:
-                edit_type = st.selectbox(
-                    "Tipo",
-                    ["Salário", "Despesa"],
-                    index=["Salário", "Despesa"].index(selected_row["type"]) if selected_row["type"] in ["Salário", "Despesa"] else 0
-                )
+        col3, col4 = st.columns(2)
 
-            edit_category = "Salário"
-            edit_description = ""
+        with col3:
+            edit_value = st.number_input(
+                "Valor",
+                min_value=0.0,
+                step=1.0,
+                value=float(selected_row["value"]),
+                key=f"edit_value_{page}_{selected_id}"
+            )
 
-            if edit_type == "Despesa":
-                edit_category = st.selectbox(
-                    "Categoria",
-                    categories,
-                    index=categories.index(selected_row["category"]) if selected_row["category"] in categories else 0
-                )
+        with col4:
+            edit_date = st.date_input(
+                "Data",
+                value=pd.to_datetime(selected_row["date"]).date(),
+                max_value=date.today(),
+                key=f"edit_date_{page}_{selected_id}"
+            )
 
-                if edit_category == "Outros":
-                    edit_description = st.text_input(
-                        "Descrição obrigatória",
-                        value=str(selected_row["description"] or "")
-                    )
+        col_save, col_delete = st.columns([1, 1])
 
-            col3, col4 = st.columns(2)
-
-            with col3:
-                edit_value = st.number_input(
-                    "Valor",
-                    min_value=0.0,
-                    step=1.0,
-                    value=float(selected_row["value"])
-                )
-
-            with col4:
-                edit_date = st.date_input(
-                    "Data",
-                    value=pd.to_datetime(selected_row["date"]).date(),
-                    max_value=date.today()
-                )
-
-            update = st.form_submit_button("Guardar alterações")
-
-            if update:
+        with col_save:
+            if st.button("Guardar alterações", key=f"save_transaction_{page}_{selected_id}"):
                 if edit_value <= 0:
                     st.error("O valor tem de ser superior a zero.")
                 elif edit_type == "Despesa" and edit_category == "Outros" and not edit_description.strip():
@@ -618,36 +772,38 @@ elif page in ["Ruben", "Gabi", "Casal"]:
                     st.success("Movimento atualizado.")
                     st.rerun()
 
-        if st.button("Remover movimento selecionado", key=f"delete_transaction_{page}"):
-            with engine.begin() as conn:
-                conn.execute(
-                    text("DELETE FROM transactions WHERE id = :id"),
-                    {"id": selected_id}
-                )
+        with col_delete:
+            if st.button("Remover movimento", key=f"delete_transaction_{page}_{selected_id}"):
+                with engine.begin() as conn:
+                    conn.execute(
+                        text("DELETE FROM transactions WHERE id = :id"),
+                        {"id": selected_id}
+                    )
 
-            clear_cache()
-            st.success("Movimento removido.")
-            st.rerun()
+                clear_cache()
+                st.success("Movimento removido.")
+                st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =========================
 # METAS
 # =========================
 elif page == "Metas":
-    st.markdown('<div class="title">Metas</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Acompanhar objetivos de forma simples.</div>', unsafe_allow_html=True)
+    clean_title("Metas", "Acompanhar objetivos de forma simples.")
 
-    st.subheader("Criar meta")
+    st.markdown('<div class="section-title">Criar meta</div>', unsafe_allow_html=True)
 
-    with st.form("goal_form"):
+    with st.container():
+        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+
         name = st.text_input("Nome da meta")
         description = st.text_input("Descrição")
         target = st.number_input("Objetivo", min_value=0.0, step=10.0)
         current = st.number_input("Valor atual", min_value=0.0, step=10.0)
 
-        submit = st.form_submit_button("Criar")
-
-        if submit:
+        if st.button("Criar meta"):
             if not name.strip():
                 st.error("O nome é obrigatório.")
             elif target <= 0:
@@ -670,7 +826,9 @@ elif page == "Metas":
                 st.success("Meta criada.")
                 st.rerun()
 
-    st.markdown("---")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Metas existentes</div>', unsafe_allow_html=True)
 
     if goals_df.empty:
         st.info("Ainda não existem metas.")
@@ -681,16 +839,20 @@ elif page == "Metas":
             progress = min(current / target, 1) if target > 0 else 0
 
             st.markdown(f"""
-            <div class="simple-box">
-                <h3>{goal['name']}</h3>
-                <p class="small-text">{goal['description']}</p>
-                <strong>{money(current)} / {money(target)}</strong>
+            <div class="clean-box">
+                <div class="movement-top">
+                    <div>
+                        <div class="movement-title">{goal['name']}</div>
+                        <div class="movement-meta">{goal['description']}</div>
+                    </div>
+                    <div class="income">{money(current)} / {money(target)}</div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
             st.progress(progress)
 
-            col1, col2, col3 = st.columns([2, 1, 1])
+            col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
             with col1:
                 amount = st.number_input(
@@ -701,7 +863,7 @@ elif page == "Metas":
                 )
 
             with col2:
-                if st.button(f"Adicionar #{goal['id']}"):
+                if st.button("Adicionar", key=f"add_goal_{goal['id']}"):
                     if amount > 0:
                         with engine.begin() as conn:
                             conn.execute(text("""
@@ -718,7 +880,7 @@ elif page == "Metas":
                         st.rerun()
 
             with col3:
-                if st.button(f"Retirar #{goal['id']}"):
+                if st.button("Retirar", key=f"remove_goal_value_{goal['id']}"):
                     if amount > 0:
                         new_value = max(current - amount, 0)
 
@@ -736,26 +898,26 @@ elif page == "Metas":
                         st.success("Valor retirado.")
                         st.rerun()
 
-            if st.button(f"Remover meta #{goal['id']}"):
-                with engine.begin() as conn:
-                    conn.execute(
-                        text("DELETE FROM goals WHERE id = :id"),
-                        {"id": int(goal["id"])}
-                    )
+            with col4:
+                if st.button("Remover", key=f"delete_goal_{goal['id']}"):
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text("DELETE FROM goals WHERE id = :id"),
+                            {"id": int(goal["id"])}
+                        )
 
-                clear_cache()
-                st.success("Meta removida.")
-                st.rerun()
-
-            st.markdown("---")
+                    clear_cache()
+                    st.success("Meta removida.")
+                    st.rerun()
 
 
 # =========================
 # CATEGORIAS
 # =========================
 elif page == "Categorias":
-    st.markdown('<div class="title">Categorias</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Gerir categorias usadas nas despesas.</div>', unsafe_allow_html=True)
+    clean_title("Categorias", "Gerir categorias usadas nas despesas.")
+
+    st.markdown('<div class="clean-box">', unsafe_allow_html=True)
 
     new_category = st.text_input("Nova categoria")
 
@@ -777,13 +939,19 @@ elif page == "Categorias":
             except Exception:
                 st.error("Essa categoria já existe.")
 
-    st.markdown("---")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-title">Categorias existentes</div>', unsafe_allow_html=True)
 
     for _, category in categories_df.iterrows():
         col1, col2 = st.columns([4, 1])
 
         with col1:
-            st.write(category["name"])
+            st.markdown(f"""
+            <div class="movement-card">
+                <div class="movement-title">{category["name"]}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         with col2:
             if category["name"].lower() == "outros":
@@ -805,21 +973,23 @@ elif page == "Categorias":
 # EXPORTAR
 # =========================
 elif page == "Exportar":
-    st.markdown('<div class="title">Exportar</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Descarregar movimentos em Excel.</div>', unsafe_allow_html=True)
+    clean_title("Exportar", "Descarregar movimentos em Excel.")
 
     if filtered_df.empty:
         st.info("Não existem dados para exportar.")
     else:
-        export_columns = ["id", "person", "type", "category", "description", "value", "date"]
+        export_columns = ["person", "type", "category", "description", "value", "date"]
+
+        export_view = filtered_df[export_columns].copy()
+        export_view.columns = ["Pessoa", "Tipo", "Categoria", "Descrição", "Valor", "Data"]
 
         st.dataframe(
-            filtered_df[export_columns],
+            export_view,
             use_container_width=True,
             hide_index=True
         )
 
-        excel_file = export_excel(filtered_df[export_columns])
+        excel_file = export_excel(filtered_df[["id"] + export_columns])
 
         st.download_button(
             label="Descarregar Excel",
