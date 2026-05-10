@@ -85,6 +85,55 @@ def add_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
 
     return transaction
 
+<<<<<<< HEAD
+=======
+
+@app.put("/transaction/{id}")
+def update_transaction(id: int, data: TransactionCreate, db: Session = Depends(get_db)):
+
+    transaction = db.query(Transaction).filter(Transaction.id == id).first()
+
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+
+    payload = data.dict()
+
+<<<<<<< HEAD
+    if payload["date"] > str(date.today()):
+        raise HTTPException(status_code=400, detail="Data futura não permitida")
+
+    if (
+        payload["type"] == "Despesa"
+        and payload["category"] == "Outros"
+        and not payload["description"]
+    ):
+        raise HTTPException(status_code=400, detail="Descrição obrigatória para Outros")
+
+    transaction.person = payload["person"]
+    transaction.type = payload["type"]
+    transaction.category = payload["category"]
+    transaction.description = payload["description"]
+    transaction.value = payload["value"]
+    transaction.date = payload["date"]
+=======
+    payload["type"] = payload["type"].strip()
+    payload["category"] = payload["category"] or ""
+    payload["description"] = payload["description"] or ""
+
+    validate_date(payload["date"])
+    validate_outros(payload)
+
+    for k, v in payload.items():
+        setattr(transaction, k, v)
+>>>>>>> df9065d (fix update transaction and sync backend)
+
+    db.commit()
+    db.refresh(transaction)
+
+    return transaction
+
+
+>>>>>>> b78e052 (fix: resolve backend merge conflicts + stabilize update endpoint)
 @app.delete("/transaction/{id}")
 def delete_transaction(id: int, db: Session = Depends(get_db)):
 
