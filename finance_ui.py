@@ -73,7 +73,6 @@ CSS = """
         max-width: 1340px;
     }
 
-    /* Streamlit header / top toolbar: remove dark native band completely. */
     header,
     [data-testid="stHeader"],
     [data-testid="stHeader"]::before,
@@ -106,7 +105,6 @@ CSS = """
         color: var(--text) !important;
     }
 
-    /* Sidebar and navigation. */
     [data-testid="stSidebar"],
     [data-testid="stSidebarContent"],
     [data-testid="stSidebarUserContent"],
@@ -128,7 +126,6 @@ CSS = """
         border-top-color: var(--line) !important;
     }
 
-    /* Typography: keep native labels readable without forcing chart internals. */
     h1, h2, h3, h4, h5, h6,
     label,
     [data-testid="stMarkdownContainer"],
@@ -140,6 +137,7 @@ CSS = """
     }
 
     .hero { margin-bottom: 1.6rem; }
+
     .title {
         color: var(--text) !important;
         font-size: clamp(2rem, 4vw, 3.15rem);
@@ -147,12 +145,14 @@ CSS = """
         letter-spacing: -1.35px;
         line-height: 1.02;
     }
+
     .subtitle {
         color: var(--muted) !important;
         font-size: 1rem;
         line-height: 1.55;
         margin-top: .55rem;
     }
+
     .section-title {
         color: var(--text) !important;
         font-size: 1.22rem;
@@ -161,7 +161,6 @@ CSS = """
         letter-spacing: -.35px;
     }
 
-    /* Cards, dashboard blocks and expanders. */
     .card,
     .clean-box,
     .movement-card,
@@ -176,10 +175,31 @@ CSS = """
     }
 
     .card {
+        position: relative;
+        overflow: hidden;
         padding: 1.15rem 1.2rem;
         margin-bottom: .85rem;
         min-height: 116px;
     }
+
+    .card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: #e2e8f0;
+    }
+
+    .card-balance {
+        background: linear-gradient(135deg, #ffffff 0%, #fff7f7 100%) !important;
+        border-color: rgba(239, 68, 68, .18) !important;
+        box-shadow: 0 18px 45px rgba(239, 68, 68, .10) !important;
+    }
+
+    .card-balance::before { background: var(--accent); }
+
+    .card-balance .card-title { color: #991b1b !important; }
+
     .card-title {
         color: var(--muted) !important;
         font-size: .78rem;
@@ -187,6 +207,7 @@ CSS = """
         text-transform: uppercase;
         letter-spacing: .06em;
     }
+
     .card-value,
     [data-testid="stMetricValue"] {
         color: var(--text) !important;
@@ -195,26 +216,133 @@ CSS = """
         letter-spacing: -.7px;
         margin-top: .45rem;
     }
+
     .clean-box {
         padding: 1.25rem;
         margin-bottom: 1rem;
         box-shadow: var(--shadow) !important;
     }
+
+    .form-caption {
+        color: var(--muted) !important;
+        font-size: .86rem;
+        margin: -.2rem 0 .85rem;
+    }
+
+    .list-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin: 1.45rem 0 .85rem;
+    }
+
+    .list-header .section-title {
+        margin: 0;
+    }
+
+    .list-count {
+        color: var(--muted) !important;
+        font-size: .82rem;
+        font-weight: 800;
+        background: #f1f5f9;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: .28rem .65rem;
+        white-space: nowrap;
+    }
+
     .movement-card {
+        position: relative;
         padding: .95rem 1.05rem;
         margin-bottom: .75rem;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
     }
+
+    .movement-card:hover {
+        transform: translateY(-1px);
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .09) !important;
+    }
+
+    .movement-card.income-movement {
+        border-left: 4px solid rgba(5, 150, 105, .55) !important;
+    }
+
+    .movement-card.expense-movement {
+        border-left: 4px solid rgba(220, 38, 38, .50) !important;
+    }
+
     .movement-top {
         display: flex;
         justify-content: space-between;
         gap: 1rem;
         align-items: center;
     }
-    .movement-title { color: var(--text) !important; font-weight: 850; font-size: .98rem; }
-    .movement-meta, .small-muted { color: var(--muted) !important; font-size: .84rem; margin-top: .25rem; }
-    .income, .expense { font-size: 1rem; font-weight: 900; white-space: nowrap; }
+
+    .movement-heading {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        flex-wrap: wrap;
+    }
+
+    .movement-title {
+        color: var(--text) !important;
+        font-weight: 850;
+        font-size: .98rem;
+    }
+
+    .movement-meta,
+    .small-muted {
+        color: var(--muted) !important;
+        font-size: .84rem;
+        margin-top: .25rem;
+    }
+
+    .movement-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        font-size: .68rem;
+        font-weight: 900;
+        letter-spacing: .04em;
+        padding: .24rem .52rem;
+        text-transform: uppercase;
+    }
+
+    .movement-badge.income-badge {
+        color: #047857 !important;
+        background: #d1fae5 !important;
+        border: 1px solid #a7f3d0;
+    }
+
+    .movement-badge.expense-badge {
+        color: #b91c1c !important;
+        background: #fee2e2 !important;
+        border: 1px solid #fecaca;
+    }
+
+    .movement-date {
+        color: #475569 !important;
+        font-weight: 800;
+    }
+
+    .person-summary-card {
+        border-left: 4px solid var(--accent) !important;
+    }
+
+    .income,
+    .expense {
+        font-size: 1rem;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
     .income { color: var(--green) !important; }
+
     .expense { color: var(--red) !important; }
+
     .pill {
         display: inline-block;
         padding: .3rem .65rem;
@@ -226,101 +354,15 @@ CSS = """
     }
 
     [data-testid="stHorizontalBlock"] { gap: 1rem; }
+
     [data-testid="stVerticalBlock"] { gap: .75rem; }
+
     [data-testid="stDataFrame"] {
         background: var(--surface) !important;
         border-radius: 1rem !important;
         border: 1px solid var(--line) !important;
         padding: .4rem !important;
         box-shadow: var(--shadow-soft) !important;
-    }
-
-
-    .card {
-        position: relative;
-        overflow: hidden;
-    }
-    .card::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 4px;
-        background: #e2e8f0;
-    }
-    .card-balance {
-        background: linear-gradient(135deg, #ffffff 0%, #fff7f7 100%) !important;
-        border-color: rgba(239, 68, 68, .18) !important;
-        box-shadow: 0 18px 45px rgba(239, 68, 68, .10) !important;
-    }
-    .card-balance::before { background: var(--accent); }
-    .card-balance .card-title { color: #991b1b !important; }
-
-    .form-caption {
-        color: var(--muted) !important;
-        font-size: .86rem;
-        margin: -.2rem 0 .85rem;
-    }
-    .list-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 1rem;
-        margin: 1.45rem 0 .85rem;
-    }
-    .list-header .section-title { margin: 0; }
-    .list-count {
-        color: var(--muted) !important;
-        font-size: .82rem;
-        font-weight: 800;
-        background: #f1f5f9;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: .28rem .65rem;
-        white-space: nowrap;
-    }
-    .movement-card {
-        position: relative;
-        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
-    }
-    .movement-card:hover {
-        transform: translateY(-1px);
-        border-color: #cbd5e1 !important;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, .09) !important;
-    }
-    .movement-card.income-movement { border-left: 4px solid rgba(5, 150, 105, .55) !important; }
-    .movement-card.expense-movement { border-left: 4px solid rgba(220, 38, 38, .50) !important; }
-    .movement-heading {
-        display: flex;
-        align-items: center;
-        gap: .55rem;
-        flex-wrap: wrap;
-    }
-    .movement-badge {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        font-size: .68rem;
-        font-weight: 900;
-        letter-spacing: .04em;
-        padding: .24rem .52rem;
-        text-transform: uppercase;
-    }
-    .movement-badge.income-badge {
-        color: #047857 !important;
-        background: #d1fae5 !important;
-        border: 1px solid #a7f3d0;
-    }
-    .movement-badge.expense-badge {
-        color: #b91c1c !important;
-        background: #fee2e2 !important;
-        border: 1px solid #fecaca;
-    }
-    .movement-date {
-        color: #475569 !important;
-        font-weight: 800;
-    }
-    .person-summary-card {
-        border-left: 4px solid var(--accent) !important;
     }
 
     [data-testid="stSidebar"] [role="radiogroup"] {
@@ -330,30 +372,16 @@ CSS = """
         padding: .35rem;
         box-shadow: var(--shadow-soft);
     }
+
     [data-testid="stSidebar"] [role="radiogroup"] label {
         min-height: 2.35rem;
         align-items: center;
     }
+
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
         color: var(--muted) !important;
     }
 
-    @media (max-width: 760px) {
-        [data-testid="stAppViewBlockContainer"],
-        .block-container {
-            padding-left: 1rem;
-            padding-right: 1rem;
-            padding-top: 1.4rem;
-        }
-        .card { min-height: auto; padding: 1rem; }
-        .card-value { font-size: 1.45rem; }
-        .clean-box { padding: 1rem; }
-        .movement-top { align-items: flex-start; }
-        .income, .expense { font-size: .95rem; }
-        .list-header { align-items: flex-start; flex-direction: column; gap: .45rem; }
-    }
-
-    /* Inputs: target Streamlit wrappers and BaseWeb internals explicitly. */
     [data-testid="stTextInput"] [data-baseweb="input"],
     [data-testid="stNumberInput"] [data-baseweb="input"],
     [data-testid="stDateInput"] [data-baseweb="input"],
@@ -465,7 +493,6 @@ CSS = """
         color: var(--accent) !important;
     }
 
-    /* Dropdowns, select options, Streamlit menus and BaseWeb popovers. */
     body [data-baseweb="popover"],
     body [data-baseweb="popover"] > div,
     body [data-baseweb="menu"],
@@ -542,7 +569,6 @@ CSS = """
         -webkit-text-fill-color: var(--text) !important;
     }
 
-    /* Date picker calendar internals. */
     body [data-baseweb="calendar"],
     body [data-baseweb="calendar"] > div,
     body [data-baseweb="calendar"] table,
@@ -568,7 +594,6 @@ CSS = """
         color: var(--text) !important;
     }
 
-    /* Buttons and download buttons. */
     .stButton > button,
     .stDownloadButton > button,
     button[data-testid="baseButton-secondary"],
@@ -618,15 +643,16 @@ CSS = """
         -webkit-text-fill-color: inherit !important;
     }
 
-    /* Radio, expanders, alerts and misc native containers. */
     [role="radiogroup"] label {
         background: transparent !important;
         border-radius: .85rem !important;
         padding: .35rem .45rem !important;
     }
+
     [role="radiogroup"] label:hover {
         background: #f1f5f9 !important;
     }
+
     [role="radiogroup"] label * {
         color: var(--text) !important;
     }
@@ -651,6 +677,43 @@ CSS = """
         border-top: 1px solid var(--line);
         margin: 1.75rem 0;
     }
+
+    @media (max-width: 760px) {
+        [data-testid="stAppViewBlockContainer"],
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 1.4rem;
+        }
+
+        .card {
+            min-height: auto;
+            padding: 1rem;
+        }
+
+        .card-value {
+            font-size: 1.45rem;
+        }
+
+        .clean-box {
+            padding: 1rem;
+        }
+
+        .movement-top {
+            align-items: flex-start;
+        }
+
+        .income,
+        .expense {
+            font-size: .95rem;
+        }
+
+        .list-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: .45rem;
+        }
+    }
 </style>
 """
 
@@ -665,6 +728,7 @@ def money(value) -> str:
 
 def card(title: str, value: str) -> None:
     tone_class = " card-balance" if "saldo" in title.lower() else ""
+
     st.markdown(
         f"""
         <div class="card{tone_class}">
@@ -687,6 +751,7 @@ def section_title(title: str) -> None:
 
 def list_header(title: str, count: int | None = None) -> None:
     count_html = f'<div class="list-count">{count} movimentos</div>' if count is not None else ""
+
     st.markdown(
         f'<div class="list-header"><div class="section-title">{escape(title)}</div>{count_html}</div>',
         unsafe_allow_html=True,
@@ -726,24 +791,30 @@ def filter_data(dataframe: pd.DataFrame) -> pd.DataFrame:
         return dataframe
 
     filtered = dataframe.copy()
+
     st.sidebar.markdown("---")
     st.sidebar.subheader("Filtros")
 
     selected_person = st.sidebar.selectbox("Pessoa", ["Todos"] + PEOPLE)
+
     if selected_person != "Todos":
         filtered = filtered[filtered["person"] == selected_person]
 
     years = sorted(filtered["year"].dropna().astype(int).unique().tolist(), reverse=True)
+
     if years:
         selected_year = st.sidebar.selectbox("Ano", ["Todos"] + years)
+
         if selected_year != "Todos":
             filtered = filtered[filtered["year"] == int(selected_year)]
 
     selected_month = st.sidebar.selectbox("Mês", list(MONTHS.keys()))
+
     if MONTHS[selected_month] != 0:
         filtered = filtered[filtered["month"] == MONTHS[selected_month]]
 
     search = st.sidebar.text_input("Pesquisar")
+
     if search.strip():
         term = search.strip().lower()
         searchable = filtered[["description", "category", "type", "person"]].fillna("").agg(" ".join, axis=1).str.lower()
@@ -759,16 +830,21 @@ def financial_summary(dataframe: pd.DataFrame) -> tuple[float, float, float]:
     grouped = dataframe.groupby("type_normalized", dropna=False)["value"].sum()
     income = float(grouped.get("salário", 0))
     expense = float(grouped.get("despesa", 0))
+
     return income, expense, income - expense
 
 
 def summary_cards(dataframe: pd.DataFrame, balance_label: str = "Saldo") -> None:
     income, expense, balance = financial_summary(dataframe)
+
     c1, c2, c3 = st.columns(3)
+
     with c1:
         card("Receitas", money(income))
+
     with c2:
         card("Despesas", money(expense))
+
     with c3:
         card(balance_label, money(balance))
 
@@ -776,13 +852,16 @@ def summary_cards(dataframe: pd.DataFrame, balance_label: str = "Saldo") -> None
 def transaction_label(row: pd.Series) -> str:
     desc = str(row.get("description") or "").strip()
     extra = f" | {desc}" if desc else ""
+
     return f"{row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}{extra}"
 
 
 def expense_bar_chart(expenses: pd.DataFrame):
     summary = expenses.groupby("category", as_index=False)["value"].sum().sort_values("value", ascending=True).tail(5)
     fig = px.bar(summary, x="value", y="category", orientation="h", text=summary["value"].apply(money))
+
     fig.update_traces(textposition="outside", marker_color="#ef4444", hovertemplate="%{y}<br>%{text}<extra></extra>")
+
     fig.update_layout(
         height=280,
         margin=dict(l=8, r=8, t=8, b=8),
@@ -793,4 +872,5 @@ def expense_bar_chart(expenses: pd.DataFrame):
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#0f172a"),
     )
+
     return fig

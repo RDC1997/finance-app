@@ -33,6 +33,7 @@ def category_options(categories_df: pd.DataFrame) -> list[str]:
 
 def add_transaction_form(page: str, people: list[str], categories: list[str]) -> None:
     section_title("Adicionar movimento")
+
     with st.container():
         st.markdown('<div class="clean-box">', unsafe_allow_html=True)
         st.markdown('<div class="form-caption">Regista receitas ou despesas em poucos segundos.</div>', unsafe_allow_html=True)
@@ -45,8 +46,10 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
 
         category = "Salário"
         description = ""
+
         if movement_type == "Despesa":
             category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
+
             if category == "Outros":
                 description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
 
@@ -86,12 +89,14 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
 
 def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[str]) -> None:
     section_title("Editar ou remover movimento")
+
     options = {transaction_label(row): int(row["id"]) for _, row in page_df.iterrows()}
     selected_label = st.selectbox("Escolhe o movimento", list(options.keys()), key=f"select_transaction_{page}")
     selected_id = options[selected_label]
     selected_row = page_df[page_df["id"] == selected_id].iloc[0]
 
     st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -101,6 +106,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             index=PEOPLE.index(selected_row["person"]) if selected_row["person"] in PEOPLE else 0,
             key=f"edit_person_{page}_{selected_id}",
         )
+
     with col2:
         edit_type = st.selectbox(
             "Tipo",
@@ -111,6 +117,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
     edit_category = "Salário"
     edit_description = ""
+
     if edit_type == "Despesa":
         edit_category = st.selectbox(
             "Categoria",
@@ -118,6 +125,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             index=categories.index(selected_row["category"]) if selected_row["category"] in categories else 0,
             key=f"edit_category_{page}_{selected_id}",
         )
+
         if edit_category == "Outros":
             edit_description = st.text_input(
                 "Descrição obrigatória",
@@ -126,6 +134,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             )
 
     col3, col4 = st.columns(2)
+
     with col3:
         edit_value = st.number_input(
             "Valor",
@@ -134,6 +143,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             value=float(selected_row["value"]),
             key=f"edit_value_{page}_{selected_id}",
         )
+
     with col4:
         edit_date = st.date_input(
             "Data",
@@ -143,6 +153,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
         )
 
     col_save, col_delete = st.columns(2)
+
     with col_save:
         if st.button("Guardar alterações", key=f"save_transaction_{page}_{selected_id}", type="primary", use_container_width=True):
             if edit_value <= 0:
@@ -192,24 +203,30 @@ def render_dashboard(filtered_df: pd.DataFrame) -> None:
         return
 
     expenses_df = filtered_df[filtered_df["type_normalized"] == "despesa"]
+
     section_title("Resumo rápido")
+
     col1, col2 = st.columns([1.1, 0.9])
 
     with col1:
         st.markdown('<div class="clean-box">', unsafe_allow_html=True)
         st.markdown("#### Para onde foi o dinheiro")
+
         if expenses_df.empty:
             st.info("Sem despesas.")
         else:
             st.plotly_chart(expense_bar_chart(expenses_df), use_container_width=True)
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="clean-box">', unsafe_allow_html=True)
         st.markdown("#### Por pessoa")
+
         for person in PEOPLE:
             person_df = filtered_df[filtered_df["person"] == person]
             income, expense, balance = financial_summary(person_df)
+
             st.markdown(
                 f"""
                 <div class="movement-card person-summary-card">
@@ -224,26 +241,31 @@ def render_dashboard(filtered_df: pd.DataFrame) -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     list_header("Últimos movimentos", min(len(filtered_df), 6))
+
     for _, row in filtered_df.head(6).iterrows():
         movement_card(row)
 
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
     page_title(page, "Adicionar, consultar, editar e remover movimentos.")
+
     people = PEOPLE if page == "Casal" else [page]
     page_df = filtered_df[filtered_df["person"].isin(people)] if not filtered_df.empty else pd.DataFrame()
 
     summary_cards(page_df)
 
     form_col, list_col = st.columns([0.95, 1.25])
+
     with form_col:
         add_transaction_form(page, people, categories)
 
     with list_col:
         list_header("Movimentos recentes", 0 if page_df.empty else min(len(page_df), 8))
+
         if page_df.empty:
             st.info("Sem movimentos para mostrar.")
         else:
@@ -267,6 +289,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 
     with st.container():
         st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+
         name = st.text_input("Nome da meta")
         description = st.text_input("Descrição")
         target = st.number_input("Objetivo", min_value=0.0, step=10.0)
@@ -294,9 +317,11 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                 )
                 st.success("Meta criada.")
                 st.rerun()
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     section_title("Metas existentes")
+
     if goals_df.empty:
         st.info("Ainda não existem metas.")
         return
@@ -320,12 +345,15 @@ def render_goals(goals_df: pd.DataFrame) -> None:
             """,
             unsafe_allow_html=True,
         )
+
         st.progress(progress)
 
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         goal_id = int(goal["id"])
+
         with col1:
             amount = st.number_input("Valor", min_value=0.0, step=5.0, key=f"goal_amount_{goal_id}")
+
         with col2:
             if st.button("Adicionar", key=f"add_goal_{goal_id}", use_container_width=True) and amount > 0:
                 execute_write(
@@ -334,6 +362,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                 )
                 st.success("Valor adicionado.")
                 st.rerun()
+
         with col3:
             if st.button("Retirar", key=f"remove_goal_value_{goal_id}", use_container_width=True) and amount > 0:
                 execute_write(
@@ -342,6 +371,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                 )
                 st.success("Valor retirado.")
                 st.rerun()
+
         with col4:
             if st.button("Remover", key=f"delete_goal_{goal_id}", use_container_width=True):
                 execute_write("DELETE FROM goals WHERE id = :id", {"id": goal_id})
@@ -351,7 +381,9 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Gerir categorias usadas nas despesas.")
+
     st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+
     new_category = st.text_input("Nova categoria")
 
     if st.button("Adicionar categoria", type="primary", use_container_width=True):
@@ -366,12 +398,18 @@ def render_categories(categories_df: pd.DataFrame) -> None:
                 st.error("Essa categoria já existe.")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
     section_title("Categorias existentes")
 
     for _, category in categories_df.iterrows():
         col1, col2 = st.columns([4, 1])
+
         with col1:
-            st.markdown(f'<div class="movement-card"><div class="movement-title">{category["name"]}</div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="movement-card"><div class="movement-title">{category["name"]}</div></div>',
+                unsafe_allow_html=True,
+            )
+
         with col2:
             if category["name"].lower() == "outros":
                 st.caption("Protegida")
@@ -383,6 +421,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
 
 def render_export(filtered_df: pd.DataFrame) -> None:
     page_title("Exportar", "Descarregar movimentos em Excel.")
+
     if filtered_df.empty:
         st.info("Não existem dados para exportar.")
         return
@@ -390,6 +429,7 @@ def render_export(filtered_df: pd.DataFrame) -> None:
     export_columns = ["person", "type", "category", "description", "value", "date"]
     export_view = filtered_df[export_columns].copy()
     export_view.columns = ["Pessoa", "Tipo", "Categoria", "Descrição", "Valor", "Data"]
+
     st.dataframe(export_view, use_container_width=True, hide_index=True)
 
     st.download_button(
@@ -409,6 +449,7 @@ def main() -> None:
 
     st.sidebar.title("💰 Rubi & Gabi")
     st.sidebar.caption("Gestão financeira simples")
+
     page = st.sidebar.radio("Menu", ["Dashboard", "Ruben", "Gabi", "Casal", "Metas", "Categorias", "Exportar"])
     filtered_df = filter_data(transactions_df)
 
