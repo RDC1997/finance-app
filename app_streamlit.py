@@ -1,4 +1,5 @@
 from datetime import date
+from html import escape
 
 import pandas as pd
 import streamlit as st
@@ -9,8 +10,8 @@ from finance_ui import (
     MOVEMENT_TYPES,
     PEOPLE,
     apply_style,
-    expense_bar_chart,
     filter_data,
+    balance_class,
     financial_summary,
     list_header,
     money,
@@ -33,58 +34,53 @@ def category_options(categories_df: pd.DataFrame) -> list[str]:
 
 def add_transaction_form(page: str, people: list[str], categories: list[str]) -> None:
     section_title("Adicionar movimento")
+    st.markdown('<div class="form-caption">Regista receitas ou despesas em poucos segundos.</div>', unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-        st.markdown('<div class="form-caption">Regista receitas ou despesas em poucos segundos.</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        person = st.selectbox("Pessoa", people, key=f"add_person_{page}")
+    with col2:
+        movement_type = st.selectbox("Tipo", MOVEMENT_TYPES, key=f"add_type_{page}")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            person = st.selectbox("Pessoa", people, key=f"add_person_{page}")
-        with col2:
-            movement_type = st.selectbox("Tipo", MOVEMENT_TYPES, key=f"add_type_{page}")
+    category = "Salário"
+    description = ""
 
-        category = "Salário"
-        description = ""
+    if movement_type == "Despesa":
+        category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
 
-        if movement_type == "Despesa":
-            category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
+        if category == "Outros":
+            description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
 
-            if category == "Outros":
-                description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
+    col3, col4 = st.columns(2)
+    with col3:
+        value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{page}")
+    with col4:
+        movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
 
-        col3, col4 = st.columns(2)
-        with col3:
-            value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{page}")
-        with col4:
-            movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
-
-        if st.button("Adicionar movimento", key=f"add_button_{page}", type="primary", use_container_width=True):
-            if value <= 0:
-                st.error("O valor tem de ser superior a zero.")
-            elif movement_type == "Despesa" and category == "Outros" and not description.strip():
-                st.error("Na categoria Outros, a descrição é obrigatória.")
-            else:
-                execute_write(
-                    """
-                    INSERT INTO transactions
-                    (person, type, category, description, value, date)
-                    VALUES
-                    (:person, :type, :category, :description, :value, :date)
-                    """,
-                    {
-                        "person": person,
-                        "type": movement_type,
-                        "category": category,
-                        "description": description.strip(),
-                        "value": value,
-                        "date": str(movement_date),
-                    },
-                )
-                st.success("Movimento adicionado.")
-                st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("Adicionar movimento", key=f"add_button_{page}", type="primary", use_container_width=True):
+        if value <= 0:
+            st.error("O valor tem de ser superior a zero.")
+        elif movement_type == "Despesa" and category == "Outros" and not description.strip():
+            st.error("Na categoria Outros, a descrição é obrigatória.")
+        else:
+            execute_write(
+                """
+                INSERT INTO transactions
+                (person, type, category, description, value, date)
+                VALUES
+                (:person, :type, :category, :description, :value, :date)
+                """,
+                {
+                    "person": person,
+                    "type": movement_type,
+                    "category": category,
+                    "description": description.strip(),
+                    "value": value,
+                    "date": str(movement_date),
+                },
+            )
+            st.success("Movimento adicionado.")
+            st.rerun()
 
 
 def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[str]) -> None:
@@ -94,8 +90,6 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
     selected_label = st.selectbox("Escolhe o movimento", list(options.keys()), key=f"select_transaction_{page}")
     selected_id = options[selected_label]
     selected_row = page_df[page_df["id"] == selected_id].iloc[0]
-
-    st.markdown('<div class="clean-box">', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -191,58 +185,101 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             st.success("Movimento removido.")
             st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_person_summary(person: str, person_df: pd.DataFrame) -> None:
+    income, expense, balance = financial_summary(person_df)
+    current_balance_class = balance_class(balance)
+
+    st.markdown(
+        f"""
+        <div class="movement-card person-summary-card">
+            <div class="movement-top">
+                <div>
+                    <div class="movement-title">{escape(person)}</div>
+                    <div class="movement-meta">
+                        <span class="income">Receitas {money(income)}</span> ·
+                        <span class="expense">Despesas {money(expense)}</span>
+                    </div>
+                </div>
+                <div class="{current_balance_class}">{money(balance)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_compact_movements(title: str, dataframe: pd.DataFrame, movement_type: str) -> None:
+    value_class = "income" if movement_type == "Salário" else "expense"
+    empty_message = "Sem receitas." if movement_type == "Salário" else "Sem despesas."
+
+    st.markdown(f'<div class="compact-panel-title">{escape(title)}</div>', unsafe_allow_html=True)
+
+    if dataframe.empty:
+        st.markdown(f'<div class="empty-mini-card">{empty_message}</div>', unsafe_allow_html=True)
+        return
+
+    for _, row in dataframe.head(5).iterrows():
+        description = str(row.get("description") or "").strip()
+        description_html = ""
+        if movement_type == "Despesa" and str(row.get("category")) == "Outros" and description:
+            description_html = f'<div class="compact-description">{escape(description)}</div>'
+
+        if movement_type == "Salário":
+            left_label = escape(str(row.get("type", "Salário")))
+            meta = escape(str(row.get("person", "")))
+        else:
+            left_label = escape(str(row.get("category", "")))
+            meta = "Tipo: Despesa"
+
+        signal = "+" if movement_type == "Salário" else "-"
+        st.markdown(
+            f"""
+            <div class="compact-movement-card">
+                <div class="compact-row">
+                    <div>
+                        <div class="compact-title">{left_label}</div>
+                        <div class="movement-meta">{meta} · {escape(str(row.get('date', '')))}</div>
+                        {description_html}
+                    </div>
+                    <div class="{value_class}">{signal}{money(row['value'])}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_dashboard(filtered_df: pd.DataFrame) -> None:
-    page_title("Dashboard", "Visão geral simples das vossas contas.")
+    page_title("Casal", "Visão geral conjunta, simples e rápida das vossas contas.")
     summary_cards(filtered_df, "Saldo disponível")
 
     if filtered_df.empty:
         st.info("Não existem movimentos para os filtros escolhidos.")
         return
 
-    expenses_df = filtered_df[filtered_df["type_normalized"] == "despesa"]
+    person_frames = {person: filtered_df[filtered_df["person"] == person] for person in PEOPLE}
 
-    section_title("Resumo rápido")
+    section_title("Resumo por pessoa")
+    summary_cols = st.columns(2)
+    for index, person in enumerate(PEOPLE):
+        with summary_cols[index]:
+            render_person_summary(person, person_frames[person])
 
-    col1, col2 = st.columns([1.1, 0.9])
+    section_title("Receitas por pessoa")
+    income_cols = st.columns(2)
+    for index, person in enumerate(PEOPLE):
+        person_income = person_frames[person][person_frames[person]["type_normalized"] == "salário"]
+        with income_cols[index]:
+            render_compact_movements(person, person_income, "Salário")
 
-    with col1:
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-        st.markdown("#### Para onde foi o dinheiro")
-
-        if expenses_df.empty:
-            st.info("Sem despesas.")
-        else:
-            st.plotly_chart(expense_bar_chart(expenses_df), use_container_width=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-        st.markdown("#### Por pessoa")
-
-        for person in PEOPLE:
-            person_df = filtered_df[filtered_df["person"] == person]
-            income, expense, balance = financial_summary(person_df)
-
-            st.markdown(
-                f"""
-                <div class="movement-card person-summary-card">
-                    <div class="movement-top">
-                        <div>
-                            <div class="movement-title">{person}</div>
-                            <div class="movement-meta">Receitas {money(income)} · Despesas {money(expense)}</div>
-                        </div>
-                        <div class="income">{money(balance)}</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("</div>", unsafe_allow_html=True)
+    section_title("Despesas por pessoa")
+    expense_cols = st.columns(2)
+    for index, person in enumerate(PEOPLE):
+        person_expenses = person_frames[person][person_frames[person]["type_normalized"] == "despesa"]
+        with expense_cols[index]:
+            render_compact_movements(person, person_expenses, "Despesa")
 
     list_header("Últimos movimentos", min(len(filtered_df), 6))
 
@@ -253,7 +290,7 @@ def render_dashboard(filtered_df: pd.DataFrame) -> None:
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
     page_title(page, "Adicionar, consultar, editar e remover movimentos.")
 
-    people = PEOPLE if page == "Casal" else [page]
+    people = [page]
     page_df = filtered_df[filtered_df["person"].isin(people)] if not filtered_df.empty else pd.DataFrame()
 
     summary_cards(page_df)
@@ -287,38 +324,33 @@ def render_goals(goals_df: pd.DataFrame) -> None:
     page_title("Metas", "Acompanhar objetivos de forma simples.")
     section_title("Criar meta")
 
-    with st.container():
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
+    name = st.text_input("Nome da meta")
+    description = st.text_input("Descrição")
+    target = st.number_input("Objetivo", min_value=0.0, step=10.0)
+    current = st.number_input("Valor atual", min_value=0.0, step=10.0)
 
-        name = st.text_input("Nome da meta")
-        description = st.text_input("Descrição")
-        target = st.number_input("Objetivo", min_value=0.0, step=10.0)
-        current = st.number_input("Valor atual", min_value=0.0, step=10.0)
-
-        if st.button("Criar meta", type="primary", use_container_width=True):
-            if not name.strip():
-                st.error("O nome é obrigatório.")
-            elif target <= 0:
-                st.error("O objetivo tem de ser superior a zero.")
-            else:
-                execute_write(
-                    """
-                    INSERT INTO goals
-                    (name, description, target_amount, current_amount)
-                    VALUES
-                    (:name, :description, :target_amount, :current_amount)
-                    """,
-                    {
-                        "name": name.strip(),
-                        "description": description.strip(),
-                        "target_amount": target,
-                        "current_amount": current,
-                    },
-                )
-                st.success("Meta criada.")
-                st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("Criar meta", type="primary", use_container_width=True):
+        if not name.strip():
+            st.error("O nome é obrigatório.")
+        elif target <= 0:
+            st.error("O objetivo tem de ser superior a zero.")
+        else:
+            execute_write(
+                """
+                INSERT INTO goals
+                (name, description, target_amount, current_amount)
+                VALUES
+                (:name, :description, :target_amount, :current_amount)
+                """,
+                {
+                    "name": name.strip(),
+                    "description": description.strip(),
+                    "target_amount": target,
+                    "current_amount": current,
+                },
+            )
+            st.success("Meta criada.")
+            st.rerun()
 
     section_title("Metas existentes")
 
@@ -382,8 +414,6 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Gerir categorias usadas nas despesas.")
 
-    st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-
     new_category = st.text_input("Nova categoria")
 
     if st.button("Adicionar categoria", type="primary", use_container_width=True):
@@ -396,8 +426,6 @@ def render_categories(categories_df: pd.DataFrame) -> None:
                 st.rerun()
             except Exception:
                 st.error("Essa categoria já existe.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
     section_title("Categorias existentes")
 
@@ -442,25 +470,23 @@ def render_export(filtered_df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    transactions_df = load_transactions()
-    categories_df = load_categories()
-    goals_df = load_goals()
-    categories = category_options(categories_df)
-
     st.sidebar.title("💰 Rubi & Gabi")
     st.sidebar.caption("Gestão financeira simples")
 
-    page = st.sidebar.radio("Menu", ["Dashboard", "Ruben", "Gabi", "Casal", "Metas", "Categorias", "Exportar"])
+    page = st.sidebar.radio("Menu", ["Casal", "Ruben", "Gabi", "Metas", "Categorias", "Exportar"])
+
+    transactions_df = load_transactions()
     filtered_df = filter_data(transactions_df)
 
-    if page == "Dashboard":
+    if page == "Casal":
         render_dashboard(filtered_df)
-    elif page in ["Ruben", "Gabi", "Casal"]:
-        render_person_page(page, filtered_df, categories)
+    elif page in ["Ruben", "Gabi"]:
+        categories_df = load_categories()
+        render_person_page(page, filtered_df, category_options(categories_df))
     elif page == "Metas":
-        render_goals(goals_df)
+        render_goals(load_goals())
     elif page == "Categorias":
-        render_categories(categories_df)
+        render_categories(load_categories())
     elif page == "Exportar":
         render_export(filtered_df)
 
