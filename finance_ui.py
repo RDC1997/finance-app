@@ -1,7 +1,6 @@
 from html import escape
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 PEOPLE = ["Ruben", "Gabi"]
@@ -190,15 +189,47 @@ CSS = """
         background: #e2e8f0;
     }
 
-    .card-balance {
-        background: linear-gradient(135deg, #ffffff 0%, #fff7f7 100%) !important;
-        border-color: rgba(239, 68, 68, .18) !important;
-        box-shadow: 0 18px 45px rgba(239, 68, 68, .10) !important;
+    .card-income {
+        background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%) !important;
+        border-color: rgba(5, 150, 105, .2) !important;
     }
 
-    .card-balance::before { background: var(--accent); }
+    .card-income::before { background: var(--green); }
 
-    .card-balance .card-title { color: #991b1b !important; }
+    .card-income .card-value { color: var(--green) !important; }
+
+    .card-expense {
+        background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%) !important;
+        border-color: rgba(220, 38, 38, .2) !important;
+    }
+
+    .card-expense::before { background: var(--red); }
+
+    .card-expense .card-value { color: var(--red) !important; }
+
+    .card-balance-positive {
+        background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%) !important;
+        border-color: rgba(5, 150, 105, .2) !important;
+        box-shadow: 0 18px 45px rgba(5, 150, 105, .09) !important;
+    }
+
+    .card-balance-positive::before { background: var(--green); }
+
+    .card-balance-positive .card-value { color: var(--green) !important; }
+
+    .card-balance-negative {
+        background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%) !important;
+        border-color: rgba(220, 38, 38, .2) !important;
+        box-shadow: 0 18px 45px rgba(220, 38, 38, .09) !important;
+    }
+
+    .card-balance-negative::before { background: var(--red); }
+
+    .card-balance-negative .card-value { color: var(--red) !important; }
+
+    .card-balance-neutral::before { background: #64748b; }
+
+    .card-balance-neutral .card-value { color: var(--text) !important; }
 
     .card-title {
         color: var(--muted) !important;
@@ -332,6 +363,78 @@ CSS = """
         border-left: 4px solid var(--accent) !important;
     }
 
+    .couple-person-title {
+        color: var(--text) !important;
+        font-size: 1.08rem;
+        font-weight: 900;
+        letter-spacing: -.03em;
+        margin: 1.2rem 0 .7rem;
+    }
+
+    .couple-list-title {
+        align-items: center;
+        display: flex;
+        gap: .5rem;
+        margin: 0 0 .6rem;
+    }
+
+    .couple-list-heading {
+        color: var(--text) !important;
+        font-size: .96rem;
+        font-weight: 900;
+    }
+
+    .couple-panel {
+        background: rgba(255, 255, 255, .96) !important;
+        border: 1px solid rgba(216, 224, 235, .95) !important;
+        border-radius: 1.15rem !important;
+        box-shadow: var(--shadow-soft) !important;
+        margin-bottom: .9rem;
+        padding: .9rem;
+    }
+
+    .couple-row {
+        align-items: center;
+        background: var(--surface-soft) !important;
+        border: 1px solid var(--line) !important;
+        border-radius: .9rem !important;
+        display: flex;
+        gap: .75rem;
+        justify-content: space-between;
+        margin-top: .5rem;
+        padding: .72rem .8rem;
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .couple-row:hover {
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .07) !important;
+        transform: translateY(-1px);
+    }
+
+    .couple-row-title {
+        color: var(--text) !important;
+        font-size: .9rem;
+        font-weight: 850;
+    }
+
+    .couple-row-meta {
+        color: var(--muted) !important;
+        font-size: .8rem;
+        font-weight: 650;
+        margin-top: .18rem;
+    }
+
+    .couple-empty {
+        background: var(--surface-soft) !important;
+        border: 1px dashed var(--line-strong) !important;
+        border-radius: .9rem !important;
+        color: var(--muted) !important;
+        font-size: .86rem;
+        font-weight: 750;
+        padding: .75rem .8rem;
+    }
+
     .income,
     .expense {
         font-size: 1rem;
@@ -342,6 +445,8 @@ CSS = """
     .income { color: var(--green) !important; }
 
     .expense { color: var(--red) !important; }
+
+    .neutral { color: var(--text) !important; }
 
     .pill {
         display: inline-block;
@@ -726,12 +831,10 @@ def money(value) -> str:
     return f"{float(value):,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def card(title: str, value: str) -> None:
-    tone_class = " card-balance" if "saldo" in title.lower() else ""
-
+def card(title: str, value: str, tone: str = "neutral") -> None:
     st.markdown(
         f"""
-        <div class="card{tone_class}">
+        <div class="card card-{tone}">
             <div class="card-title">{escape(title)}</div>
             <div class="card-value">{escape(value)}</div>
         </div>
@@ -834,19 +937,35 @@ def financial_summary(dataframe: pd.DataFrame) -> tuple[float, float, float]:
     return income, expense, income - expense
 
 
+def balance_tone(balance: float) -> str:
+    if balance > 0:
+        return "balance-positive"
+    if balance < 0:
+        return "balance-negative"
+    return "balance-neutral"
+
+
+def balance_class(balance: float) -> str:
+    if balance > 0:
+        return "income"
+    if balance < 0:
+        return "expense"
+    return "neutral"
+
+
 def summary_cards(dataframe: pd.DataFrame, balance_label: str = "Saldo") -> None:
     income, expense, balance = financial_summary(dataframe)
 
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        card("Receitas", money(income))
+        card("Salário", money(income), "income")
 
     with c2:
-        card("Despesas", money(expense))
+        card("Despesas", money(expense), "expense")
 
     with c3:
-        card(balance_label, money(balance))
+        card(balance_label, money(balance), balance_tone(balance))
 
 
 def transaction_label(row: pd.Series) -> str:
@@ -854,23 +973,3 @@ def transaction_label(row: pd.Series) -> str:
     extra = f" | {desc}" if desc else ""
 
     return f"{row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}{extra}"
-
-
-def expense_bar_chart(expenses: pd.DataFrame):
-    summary = expenses.groupby("category", as_index=False)["value"].sum().sort_values("value", ascending=True).tail(5)
-    fig = px.bar(summary, x="value", y="category", orientation="h", text=summary["value"].apply(money))
-
-    fig.update_traces(textposition="outside", marker_color="#ef4444", hovertemplate="%{y}<br>%{text}<extra></extra>")
-
-    fig.update_layout(
-        height=280,
-        margin=dict(l=8, r=8, t=8, b=8),
-        xaxis_title="",
-        yaxis_title="",
-        showlegend=False,
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#0f172a"),
-    )
-
-    return fig

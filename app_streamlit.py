@@ -1,4 +1,5 @@
 from datetime import date
+from html import escape
 
 import pandas as pd
 import streamlit as st
@@ -9,7 +10,7 @@ from finance_ui import (
     MOVEMENT_TYPES,
     PEOPLE,
     apply_style,
-    expense_bar_chart,
+    balance_class,
     filter_data,
     financial_summary,
     list_header,
@@ -194,66 +195,93 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
     st.markdown("</div>", unsafe_allow_html=True)
 
 
+def render_couple_panel(title: str, dataframe: pd.DataFrame, movement_type: str) -> None:
+    is_salary = movement_type == "Salário"
+    value_class = "income" if is_salary else "expense"
+    badge_class = "income-badge" if is_salary else "expense-badge"
+    empty_message = "Sem salário para os filtros escolhidos." if is_salary else "Sem despesas para os filtros escolhidos."
+    total = float(dataframe["value"].sum()) if not dataframe.empty else 0.0
+
+    rows_html = []
+    for _, row in dataframe.head(5).iterrows():
+        if is_salary:
+            row_title = "Tipo: Salário"
+            meta_parts = [f"Data: {escape(str(row['date']))}"]
+        else:
+            row_title = f"Categoria: {escape(str(row['category']))}"
+            meta_parts = [f"Data: {escape(str(row['date']))}"]
+            description = str(row.get("description") or "").strip()
+            if str(row.get("category")) == "Outros" and description:
+                meta_parts.append(f"Descrição: {escape(description)}")
+
+        rows_html.append(
+            f"""
+            <div class="couple-row">
+                <div>
+                    <div class="couple-row-title">{row_title}</div>
+                    <div class="couple-row-meta">{' · '.join(meta_parts)}</div>
+                </div>
+                <div class="{value_class}">{'+' if is_salary else '-'}{money(row['value'])}</div>
+            </div>
+            """
+        )
+
+    content_html = "".join(rows_html) if rows_html else f'<div class="couple-empty">{empty_message}</div>'
+
+    st.markdown(
+        f"""
+        <div class="couple-panel">
+            <div class="couple-list-title">
+                <span class="movement-badge {badge_class}">{escape(title)}</span>
+                <span class="couple-list-heading">Total: <span class="{value_class}">{money(total)}</span></span>
+            </div>
+            {content_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_couple_person_summary(person: str, dataframe: pd.DataFrame) -> None:
+    income, expense, balance = financial_summary(dataframe)
+    st.markdown(
+        f"""
+        <div class="couple-person-title">Resumo {escape(person)}
+            <span class="pill">Salário <span class="income">{money(income)}</span></span>
+            <span class="pill">Despesas <span class="expense">{money(expense)}</span></span>
+            <span class="pill">Saldo <span class="{balance_class(balance)}">{money(balance)}</span></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    salary_df = dataframe[dataframe["type_normalized"] == "salário"] if not dataframe.empty else dataframe
+    expenses_df = dataframe[dataframe["type_normalized"] == "despesa"] if not dataframe.empty else dataframe
+
+    salary_col, expenses_col = st.columns(2)
+    with salary_col:
+        render_couple_panel("Salário", salary_df, "Salário")
+    with expenses_col:
+        render_couple_panel("Despesas", expenses_df, "Despesa")
+
+
 def render_dashboard(filtered_df: pd.DataFrame) -> None:
-    page_title("Dashboard", "Visão geral simples das vossas contas.")
+    page_title("Casal", "Visão geral conjunta, simples e rápida das vossas contas.")
     summary_cards(filtered_df, "Saldo disponível")
 
     if filtered_df.empty:
         st.info("Não existem movimentos para os filtros escolhidos.")
         return
 
-    expenses_df = filtered_df[filtered_df["type_normalized"] == "despesa"]
-
-    section_title("Resumo rápido")
-
-    col1, col2 = st.columns([1.1, 0.9])
-
-    with col1:
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-        st.markdown("#### Para onde foi o dinheiro")
-
-        if expenses_df.empty:
-            st.info("Sem despesas.")
-        else:
-            st.plotly_chart(expense_bar_chart(expenses_df), use_container_width=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="clean-box">', unsafe_allow_html=True)
-        st.markdown("#### Por pessoa")
-
-        for person in PEOPLE:
-            person_df = filtered_df[filtered_df["person"] == person]
-            income, expense, balance = financial_summary(person_df)
-
-            st.markdown(
-                f"""
-                <div class="movement-card person-summary-card">
-                    <div class="movement-top">
-                        <div>
-                            <div class="movement-title">{person}</div>
-                            <div class="movement-meta">Receitas {money(income)} · Despesas {money(expense)}</div>
-                        </div>
-                        <div class="income">{money(balance)}</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    list_header("Últimos movimentos", min(len(filtered_df), 6))
-
-    for _, row in filtered_df.head(6).iterrows():
-        movement_card(row)
+    for person in PEOPLE:
+        person_df = filtered_df[filtered_df["person"] == person]
+        render_couple_person_summary(person, person_df)
 
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
     page_title(page, "Adicionar, consultar, editar e remover movimentos.")
 
-    people = PEOPLE if page == "Casal" else [page]
+    people = [page]
     page_df = filtered_df[filtered_df["person"].isin(people)] if not filtered_df.empty else pd.DataFrame()
 
     summary_cards(page_df)
@@ -450,12 +478,12 @@ def main() -> None:
     st.sidebar.title("💰 Rubi & Gabi")
     st.sidebar.caption("Gestão financeira simples")
 
-    page = st.sidebar.radio("Menu", ["Dashboard", "Ruben", "Gabi", "Casal", "Metas", "Categorias", "Exportar"])
+    page = st.sidebar.radio("Menu", ["Casal", "Ruben", "Gabi", "Metas", "Categorias", "Exportar"])
     filtered_df = filter_data(transactions_df)
 
-    if page == "Dashboard":
+    if page == "Casal":
         render_dashboard(filtered_df)
-    elif page in ["Ruben", "Gabi", "Casal"]:
+    elif page in ["Ruben", "Gabi"]:
         render_person_page(page, filtered_df, categories)
     elif page == "Metas":
         render_goals(goals_df)
