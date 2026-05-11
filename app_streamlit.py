@@ -11,7 +11,6 @@ from finance_ui import (
     PEOPLE,
     apply_style,
     filter_data,
-    balance_class,
     financial_summary,
     list_header,
     money,
@@ -34,11 +33,13 @@ def category_options(categories_df: pd.DataFrame) -> list[str]:
 
 def add_transaction_form(page: str, people: list[str], categories: list[str]) -> None:
     section_title("Adicionar movimento")
-    st.markdown('<div class="form-caption">Regista receitas ou despesas em poucos segundos.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="form-caption">Regista salários ou despesas em poucos segundos.</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
+
     with col1:
         person = st.selectbox("Pessoa", people, key=f"add_person_{page}")
+
     with col2:
         movement_type = st.selectbox("Tipo", MOVEMENT_TYPES, key=f"add_type_{page}")
 
@@ -52,8 +53,10 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
             description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
 
     col3, col4 = st.columns(2)
+
     with col3:
         value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{page}")
+
     with col4:
         movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
 
@@ -186,23 +189,19 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
             st.rerun()
 
 
-
-def render_person_summary(person: str, person_df: pd.DataFrame) -> None:
-    income, expense, balance = financial_summary(person_df)
-    current_balance_class = balance_class(balance)
+def render_money_line(title: str, meta: str, value: float, tone: str) -> None:
+    value_class = "income" if tone == "income" else "expense"
+    signal = "+" if tone == "income" else "-"
 
     st.markdown(
         f"""
-        <div class="movement-card person-summary-card">
-            <div class="movement-top">
+        <div class="compact-movement-card">
+            <div class="compact-row">
                 <div>
-                    <div class="movement-title">{escape(person)}</div>
-                    <div class="movement-meta">
-                        <span class="income">Receitas {money(income)}</span> ·
-                        <span class="expense">Despesas {money(expense)}</span>
-                    </div>
+                    <div class="compact-title">{escape(title)}</div>
+                    <div class="movement-meta">{escape(meta)}</div>
                 </div>
-                <div class="{current_balance_class}">{money(balance)}</div>
+                <div class="{value_class}">{signal}{money(value)}</div>
             </div>
         </div>
         """,
@@ -210,45 +209,49 @@ def render_person_summary(person: str, person_df: pd.DataFrame) -> None:
     )
 
 
-def render_compact_movements(title: str, dataframe: pd.DataFrame, movement_type: str) -> None:
-    value_class = "income" if movement_type == "Salário" else "expense"
-    empty_message = "Sem receitas." if movement_type == "Salário" else "Sem despesas."
+def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
+    st.markdown(f'<div class="section-title">Resumo {escape(person)}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="compact-panel-title">{escape(title)}</div>', unsafe_allow_html=True)
+    salary_df = person_df[person_df["type_normalized"] == "salário"]
+    expense_df = person_df[person_df["type_normalized"] == "despesa"]
 
-    if dataframe.empty:
-        st.markdown(f'<div class="empty-mini-card">{empty_message}</div>', unsafe_allow_html=True)
-        return
+    col_salary, col_expense = st.columns(2)
 
-    for _, row in dataframe.head(5).iterrows():
-        description = str(row.get("description") or "").strip()
-        description_html = ""
-        if movement_type == "Despesa" and str(row.get("category")) == "Outros" and description:
-            description_html = f'<div class="compact-description">{escape(description)}</div>'
+    with col_salary:
+        st.markdown('<div class="compact-panel-title salary-title">Salário</div>', unsafe_allow_html=True)
 
-        if movement_type == "Salário":
-            left_label = escape(str(row.get("type", "Salário")))
-            meta = escape(str(row.get("person", "")))
+        if salary_df.empty:
+            st.markdown('<div class="empty-mini-card">Sem salário registado.</div>', unsafe_allow_html=True)
         else:
-            left_label = escape(str(row.get("category", "")))
-            meta = "Tipo: Despesa"
+            for _, row in salary_df.head(5).iterrows():
+                render_money_line(
+                    title="Salário",
+                    meta=f"{person} · {row['date']}",
+                    value=float(row["value"]),
+                    tone="income",
+                )
 
-        signal = "+" if movement_type == "Salário" else "-"
-        st.markdown(
-            f"""
-            <div class="compact-movement-card">
-                <div class="compact-row">
-                    <div>
-                        <div class="compact-title">{left_label}</div>
-                        <div class="movement-meta">{meta} · {escape(str(row.get('date', '')))}</div>
-                        {description_html}
-                    </div>
-                    <div class="{value_class}">{signal}{money(row['value'])}</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    with col_expense:
+        st.markdown('<div class="compact-panel-title expense-title">Despesas</div>', unsafe_allow_html=True)
+
+        if expense_df.empty:
+            st.markdown('<div class="empty-mini-card">Sem despesas registadas.</div>', unsafe_allow_html=True)
+        else:
+            for _, row in expense_df.head(5).iterrows():
+                category = str(row.get("category") or "Despesa")
+                description = str(row.get("description") or "").strip()
+
+                if category == "Outros" and description:
+                    meta = f"Despesa · Outros · {description} · {row['date']}"
+                else:
+                    meta = f"Despesa · {category} · {row['date']}"
+
+                render_money_line(
+                    title=category,
+                    meta=meta,
+                    value=float(row["value"]),
+                    tone="expense",
+                )
 
 
 def render_dashboard(filtered_df: pd.DataFrame) -> None:
@@ -259,27 +262,9 @@ def render_dashboard(filtered_df: pd.DataFrame) -> None:
         st.info("Não existem movimentos para os filtros escolhidos.")
         return
 
-    person_frames = {person: filtered_df[filtered_df["person"] == person] for person in PEOPLE}
-
-    section_title("Resumo por pessoa")
-    summary_cols = st.columns(2)
-    for index, person in enumerate(PEOPLE):
-        with summary_cols[index]:
-            render_person_summary(person, person_frames[person])
-
-    section_title("Receitas por pessoa")
-    income_cols = st.columns(2)
-    for index, person in enumerate(PEOPLE):
-        person_income = person_frames[person][person_frames[person]["type_normalized"] == "salário"]
-        with income_cols[index]:
-            render_compact_movements(person, person_income, "Salário")
-
-    section_title("Despesas por pessoa")
-    expense_cols = st.columns(2)
-    for index, person in enumerate(PEOPLE):
-        person_expenses = person_frames[person][person_frames[person]["type_normalized"] == "despesa"]
-        with expense_cols[index]:
-            render_compact_movements(person, person_expenses, "Despesa")
+    for person in PEOPLE:
+        person_df = filtered_df[filtered_df["person"] == person]
+        render_person_breakdown(person, person_df)
 
     list_header("Últimos movimentos", min(len(filtered_df), 6))
 
@@ -368,8 +353,8 @@ def render_goals(goals_df: pd.DataFrame) -> None:
             <div class="clean-box">
                 <div class="movement-top">
                     <div>
-                        <div class="movement-title">{goal['name']}</div>
-                        <div class="movement-meta">{goal['description']}</div>
+                        <div class="movement-title">{escape(str(goal['name']))}</div>
+                        <div class="movement-meta">{escape(str(goal['description']))}</div>
                     </div>
                     <div class="income">{money(current_value)} / {money(target_value)}</div>
                 </div>
@@ -434,7 +419,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
 
         with col1:
             st.markdown(
-                f'<div class="movement-card"><div class="movement-title">{category["name"]}</div></div>',
+                f'<div class="movement-card"><div class="movement-title">{escape(str(category["name"]))}</div></div>',
                 unsafe_allow_html=True,
             )
 

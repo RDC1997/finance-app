@@ -951,7 +951,7 @@ def summary_cards(dataframe: pd.DataFrame, balance_label: str = "Saldo") -> None
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        card("Receitas", money(income), "income")
+        card("Salário", money(income), "income")
 
     with c2:
         card("Despesas", money(expense), "expense")
