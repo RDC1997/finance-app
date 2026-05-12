@@ -38,10 +38,14 @@ CSS = """
         --accent-soft: #fee2e2;
         --accent-muted: #fff1f2;
         --green: #059669;
+        --green-deep: #047857;
         --red: #dc2626;
+        --red-soft: #ef4444;
         --blue: #2563eb;
+        --amber: #f59e0b;
         --shadow: 0 18px 45px rgba(15, 23, 42, .08);
         --shadow-soft: 0 10px 28px rgba(15, 23, 42, .06);
+        --shadow-card: 0 12px 30px rgba(15, 23, 42, .075);
         --radius: 1.1rem;
     }
 
@@ -176,62 +180,116 @@ CSS = """
     .card {
         position: relative;
         overflow: hidden;
-        padding: 1.15rem 1.2rem;
-        margin-bottom: .85rem;
-        min-height: 116px;
+        padding: 1rem 1.05rem;
+        margin-bottom: .7rem;
+        min-height: 104px;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 34px rgba(15, 23, 42, .10) !important;
     }
 
     .card::before {
         content: "";
         position: absolute;
         inset: 0 auto 0 0;
-        width: 4px;
+        width: 3px;
         background: #e2e8f0;
     }
 
-    .card-income {
-        background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%) !important;
-        border-color: rgba(5, 150, 105, .18) !important;
+    .card::after {
+        content: "";
+        position: absolute;
+        right: -.9rem;
+        top: -.9rem;
+        width: 5.2rem;
+        height: 5.2rem;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, .10);
     }
 
-    .card-income::before { background: var(--green); }
+    .card-head {
+        align-items: center;
+        display: flex;
+        gap: .55rem;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+    }
 
-    .card-income .card-value { color: var(--green) !important; }
+    .card-icon {
+        align-items: center;
+        border-radius: .85rem;
+        display: inline-flex;
+        font-size: 1rem;
+        height: 2.15rem;
+        justify-content: center;
+        width: 2.15rem;
+    }
+
+    .card-income {
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #dcfce7 100%) !important;
+        border-color: rgba(5, 150, 105, .16) !important;
+    }
+
+    .card-income::before { background: linear-gradient(180deg, #10b981, var(--green-deep)); }
+
+    .card-income::after { background: rgba(16, 185, 129, .12); }
+
+    .card-income .card-icon { background: #d1fae5; color: var(--green-deep) !important; }
+
+    .card-income .card-value { color: var(--green-deep) !important; }
 
     .card-expense {
-        background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%) !important;
-        border-color: rgba(220, 38, 38, .18) !important;
+        background: linear-gradient(135deg, #ffffff 0%, #fff7ed 45%, #fee2e2 100%) !important;
+        border-color: rgba(220, 38, 38, .16) !important;
     }
 
-    .card-expense::before { background: var(--red); }
+    .card-expense::before { background: linear-gradient(180deg, #fb7185, var(--red)); }
+
+    .card-expense::after { background: rgba(239, 68, 68, .12); }
+
+    .card-expense .card-icon { background: #fee2e2; color: #b91c1c !important; }
 
     .card-expense .card-value { color: var(--red) !important; }
 
     .card-balance-positive {
-        background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%) !important;
-        border-color: rgba(5, 150, 105, .18) !important;
-        box-shadow: 0 18px 45px rgba(5, 150, 105, .09) !important;
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 52%, #e0f2fe 100%) !important;
+        border-color: rgba(5, 150, 105, .16) !important;
+        box-shadow: 0 14px 34px rgba(5, 150, 105, .08) !important;
     }
 
-    .card-balance-positive::before { background: var(--green); }
+    .card-balance-positive::before { background: linear-gradient(180deg, #34d399, var(--green)); }
+
+    .card-balance-positive::after { background: rgba(5, 150, 105, .10); }
+
+    .card-balance-positive .card-icon { background: #d1fae5; color: var(--green-deep) !important; }
 
     .card-balance-positive .card-title { color: #047857 !important; }
 
     .card-balance-positive .card-value { color: var(--green) !important; }
 
     .card-balance-negative {
-        background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%) !important;
-        border-color: rgba(220, 38, 38, .18) !important;
-        box-shadow: 0 18px 45px rgba(220, 38, 38, .09) !important;
+        background: linear-gradient(135deg, #ffffff 0%, #fff7ed 50%, #fee2e2 100%) !important;
+        border-color: rgba(220, 38, 38, .16) !important;
+        box-shadow: 0 14px 34px rgba(220, 38, 38, .08) !important;
     }
 
-    .card-balance-negative::before { background: var(--red); }
+    .card-balance-negative::before { background: linear-gradient(180deg, #fb7185, var(--red)); }
+
+    .card-balance-negative::after { background: rgba(220, 38, 38, .10); }
+
+    .card-balance-negative .card-icon { background: #fee2e2; color: #b91c1c !important; }
 
     .card-balance-negative .card-title { color: #b91c1c !important; }
 
     .card-balance-negative .card-value { color: var(--red) !important; }
 
     .card-balance-neutral::before { background: #64748b; }
+
+    .card-balance-neutral .card-icon { background: #f1f5f9; color: #334155 !important; }
 
     .card-balance-neutral .card-value { color: var(--text) !important; }
 
@@ -246,10 +304,13 @@ CSS = """
     .card-value,
     [data-testid="stMetricValue"] {
         color: var(--text) !important;
-        font-size: 1.72rem;
+        font-size: 1.58rem;
         font-weight: 900;
         letter-spacing: -.7px;
-        margin-top: .45rem;
+        line-height: 1.1;
+        margin-top: .55rem;
+        position: relative;
+        z-index: 1;
     }
 
     .clean-box {
@@ -368,23 +429,41 @@ CSS = """
     }
 
     .compact-panel-title {
+        align-items: center;
         color: var(--text) !important;
-        font-size: .92rem;
+        display: flex;
+        font-size: .84rem;
         font-weight: 900;
-        margin: .2rem 0 .65rem;
-        letter-spacing: -.02em;
+        gap: .4rem;
+        letter-spacing: .04em;
+        margin: .1rem 0 .5rem;
+        text-transform: uppercase;
     }
+
+    .salary-title { color: var(--green-deep) !important; }
+
+    .expense-title { color: #b91c1c !important; }
 
     .compact-movement-card,
     .empty-mini-card {
-        background: rgba(255, 255, 255, .94) !important;
-        border: 1px solid var(--line) !important;
-        border-radius: 1rem !important;
-        box-shadow: var(--shadow-soft) !important;
+        background: rgba(255, 255, 255, .96) !important;
+        border: 1px solid rgba(216, 224, 235, .90) !important;
+        border-radius: .95rem !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .055) !important;
         color: var(--text) !important;
-        margin-bottom: .55rem;
-        padding: .75rem .85rem;
+        margin-bottom: .45rem;
+        padding: .62rem .7rem;
         transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .compact-movement-card.compact-income {
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;
+        border-color: rgba(5, 150, 105, .14) !important;
+    }
+
+    .compact-movement-card.compact-expense {
+        background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%) !important;
+        border-color: rgba(220, 38, 38, .14) !important;
     }
 
     .compact-movement-card:hover {
@@ -396,14 +475,19 @@ CSS = """
     .compact-row {
         align-items: center;
         display: flex;
-        gap: .75rem;
+        gap: .7rem;
         justify-content: space-between;
+    }
+
+    .compact-main {
+        min-width: 0;
     }
 
     .compact-title {
         color: var(--text) !important;
-        font-size: .92rem;
+        font-size: .88rem;
         font-weight: 850;
+        line-height: 1.2;
     }
 
     .compact-description {
@@ -773,6 +857,83 @@ CSS = """
         margin: 1.75rem 0;
     }
 
+    .category-grid-card {
+        align-items: center;
+        background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.96)) !important;
+        border: 1px solid rgba(216, 224, 235, .92) !important;
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .055) !important;
+        display: flex;
+        gap: .55rem;
+        margin-bottom: .35rem;
+        min-height: 3.1rem;
+        padding: .68rem .78rem;
+    }
+
+    .category-dot {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+        border-radius: 999px;
+        flex: 0 0 .58rem;
+        height: .58rem;
+        width: .58rem;
+    }
+
+    .category-name {
+        color: var(--text) !important;
+        font-size: .9rem;
+        font-weight: 850;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .category-protected {
+        color: var(--muted) !important;
+        font-size: .72rem;
+        font-weight: 800;
+        margin: -.15rem 0 .65rem;
+        text-align: center;
+    }
+
+    .goal-progress-wrap {
+        margin: .7rem 0 .95rem;
+    }
+
+    .goal-progress-meta {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: .42rem;
+    }
+
+    .goal-progress-label {
+        color: var(--muted) !important;
+        font-size: .78rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+
+    .goal-progress-percent {
+        color: var(--text) !important;
+        font-size: .86rem;
+        font-weight: 900;
+    }
+
+    .goal-progress-track {
+        background: #e2e8f0;
+        border-radius: 999px;
+        height: .82rem;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .goal-progress-fill {
+        border-radius: inherit;
+        height: 100%;
+        transition: width .45s ease, background .25s ease;
+    }
+
     @media (max-width: 760px) {
         [data-testid="stAppViewBlockContainer"],
         .block-container {
@@ -823,11 +984,23 @@ def money(value) -> str:
 
 def card(title: str, value: str, tone: str = "neutral") -> None:
     tone_class = f" card-{tone}"
+    icon_map = {
+        "income": "↗",
+        "expense": "↘",
+        "balance-positive": "✓",
+        "balance-negative": "!",
+        "balance-neutral": "•",
+        "neutral": "•",
+    }
+    icon = icon_map.get(tone, "•")
 
     st.markdown(
         f"""
         <div class="card{tone_class}">
-            <div class="card-title">{escape(title)}</div>
+            <div class="card-head">
+                <div class="card-title">{escape(title)}</div>
+                <div class="card-icon">{escape(icon)}</div>
+            </div>
             <div class="card-value">{escape(value)}</div>
         </div>
         """,

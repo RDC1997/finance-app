@@ -191,13 +191,14 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
 def render_money_line(title: str, meta: str, value: float, tone: str) -> None:
     value_class = "income" if tone == "income" else "expense"
+    tone_class = "compact-income" if tone == "income" else "compact-expense"
     signal = "+" if tone == "income" else "-"
 
     st.markdown(
         f"""
-        <div class="compact-movement-card">
+        <div class="compact-movement-card {tone_class}">
             <div class="compact-row">
-                <div>
+                <div class="compact-main">
                     <div class="compact-title">{escape(title)}</div>
                     <div class="movement-meta">{escape(meta)}</div>
                 </div>
@@ -218,7 +219,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
     col_salary, col_expense = st.columns(2)
 
     with col_salary:
-        st.markdown('<div class="compact-panel-title salary-title">Salário</div>', unsafe_allow_html=True)
+        st.markdown('<div class="compact-panel-title salary-title">↗ Salários</div>', unsafe_allow_html=True)
 
         if salary_df.empty:
             st.markdown('<div class="empty-mini-card">Sem salário registado.</div>', unsafe_allow_html=True)
@@ -232,7 +233,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
                 )
 
     with col_expense:
-        st.markdown('<div class="compact-panel-title expense-title">Despesas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="compact-panel-title expense-title">↘ Despesas</div>', unsafe_allow_html=True)
 
         if expense_df.empty:
             st.markdown('<div class="empty-mini-card">Sem despesas registadas.</div>', unsafe_allow_html=True)
@@ -266,11 +267,6 @@ def render_dashboard(filtered_df: pd.DataFrame) -> None:
         person_df = filtered_df[filtered_df["person"] == person]
         render_person_breakdown(person, person_df)
 
-    list_header("Últimos movimentos", min(len(filtered_df), 6))
-
-    for _, row in filtered_df.head(6).iterrows():
-        movement_card(row)
-
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
     page_title(page, "Adicionar, consultar, editar e remover movimentos.")
@@ -303,6 +299,38 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
         st.dataframe(table_df, use_container_width=True, hide_index=True)
 
     edit_transaction_panel(page, page_df, categories)
+
+
+def goal_progress_color(progress_percent: int) -> str:
+    if progress_percent < 25:
+        return "linear-gradient(90deg, #ef4444, #dc2626)"
+    if progress_percent < 50:
+        return "linear-gradient(90deg, #ef4444, #f97316)"
+    if progress_percent < 75:
+        return "linear-gradient(90deg, #f59e0b, #84cc16)"
+    return "linear-gradient(90deg, #22c55e, #059669)"
+
+
+def render_goal_progress(progress: float) -> None:
+    safe_progress = max(0.0, min(float(progress), 1.0))
+    progress_percent = int(round(safe_progress * 100))
+    fill_width = max(progress_percent, 1) if progress_percent > 0 else 0
+    color = goal_progress_color(progress_percent)
+
+    st.markdown(
+        f"""
+        <div class="goal-progress-wrap">
+            <div class="goal-progress-meta">
+                <div class="goal-progress-label">Progresso</div>
+                <div class="goal-progress-percent">{progress_percent}% concluído</div>
+            </div>
+            <div class="goal-progress-track">
+                <div class="goal-progress-fill" style="width: {fill_width}%; background: {color};"></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_goals(goals_df: pd.DataFrame) -> None:
@@ -363,7 +391,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
             unsafe_allow_html=True,
         )
 
-        st.progress(progress)
+        render_goal_progress(progress)
 
         col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
         goal_id = int(goal["id"])
@@ -399,35 +427,50 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Gerir categorias usadas nas despesas.")
 
-    new_category = st.text_input("Nova categoria")
+    form_col, _ = st.columns([1, 1])
 
-    if st.button("Adicionar categoria", type="primary", use_container_width=True):
-        if not new_category.strip():
-            st.error("Escreve o nome da categoria.")
-        else:
-            try:
-                execute_write("INSERT INTO categories (name) VALUES (:name)", {"name": new_category.strip()})
-                st.success("Categoria adicionada.")
-                st.rerun()
-            except Exception:
-                st.error("Essa categoria já existe.")
+    with form_col:
+        new_category = st.text_input("Nova categoria")
+
+        if st.button("Adicionar categoria", type="primary", use_container_width=True):
+            if not new_category.strip():
+                st.error("Escreve o nome da categoria.")
+            else:
+                try:
+                    execute_write("INSERT INTO categories (name) VALUES (:name)", {"name": new_category.strip()})
+                    st.success("Categoria adicionada.")
+                    st.rerun()
+                except Exception:
+                    st.error("Essa categoria já existe.")
 
     section_title("Categorias existentes")
 
-    for _, category in categories_df.iterrows():
-        col1, col2 = st.columns([4, 1])
+    if categories_df.empty:
+        st.info("Ainda não existem categorias.")
+        return
 
-        with col1:
+    category_columns = st.columns(4)
+
+    for index, (_, category) in enumerate(categories_df.iterrows()):
+        category_id = int(category["id"])
+        category_name = str(category["name"])
+        is_protected = category_name.lower() == "outros"
+
+        with category_columns[index % len(category_columns)]:
             st.markdown(
-                f'<div class="movement-card"><div class="movement-title">{escape(str(category["name"]))}</div></div>',
+                f"""
+                <div class="category-grid-card">
+                    <span class="category-dot"></span>
+                    <div class="category-name">{escape(category_name)}</div>
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
 
-        with col2:
-            if category["name"].lower() == "outros":
-                st.caption("Protegida")
-            elif st.button("Remover", key=f"remove_cat_{category['id']}", use_container_width=True):
-                execute_write("DELETE FROM categories WHERE id = :id", {"id": int(category["id"])})
+            if is_protected:
+                st.markdown('<div class="category-protected">Protegida</div>', unsafe_allow_html=True)
+            elif st.button("Remover", key=f"remove_cat_{category_id}", use_container_width=True):
+                execute_write("DELETE FROM categories WHERE id = :id", {"id": category_id})
                 st.success("Categoria removida.")
                 st.rerun()
 
