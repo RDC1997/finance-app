@@ -93,10 +93,33 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
     section_title("Editar ou remover movimento")
 
     options = {transaction_label(row): int(row["id"]) for _, row in page_df.iterrows()}
-    selected_label = st.selectbox("Escolhe o movimento", list(options.keys()), key=f"select_transaction_{page}")
+    selected_label = st.selectbox("Movimento a alterar", list(options.keys()), key=f"select_transaction_{page}")
     selected_id = options[selected_label]
     selected_row = page_df[page_df["id"] == selected_id].iloc[0]
+    selected_description = str(selected_row.get("description") or "").strip()
+    selected_category = str(selected_row.get("category") or "")
+    selected_type = str(selected_row.get("type") or "")
+    selected_value_class = "income" if selected_type == "Salário" else "expense"
+    selected_signal = "+" if selected_type == "Salário" else "-"
+    selected_extra = f" · {selected_description}" if selected_description else ""
 
+    st.markdown(
+        f"""
+        <div class="selected-movement-card">
+            <div class="selected-movement-eyebrow">Movimento selecionado</div>
+            <div class="selected-movement-title">
+                <span>{escape(category_label(selected_category))}</span>
+                <span class="{selected_value_class}">{selected_signal}{money(selected_row['value'])}</span>
+            </div>
+            <div class="selected-movement-meta">
+                {escape(selected_type)} · {escape(str(selected_row['person']))} · {escape(str(selected_row['date']))}{escape(selected_extra)}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="edit-block-label">Editar dados</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
 
     with col1:
@@ -109,7 +132,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
     with col2:
         edit_type = st.selectbox(
-            "Tipo",
+            "Tipo de movimento",
             MOVEMENT_TYPES,
             index=MOVEMENT_TYPES.index(selected_row["type"]) if selected_row["type"] in MOVEMENT_TYPES else 0,
             key=f"edit_type_{page}_{selected_id}",
@@ -120,7 +143,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
     if edit_type == "Despesa":
         edit_category = st.selectbox(
-            "Categoria",
+            "Categoria da despesa",
             categories,
             index=categories.index(selected_row["category"]) if selected_row["category"] in categories else 0,
             key=f"edit_category_{page}_{selected_id}",
@@ -128,7 +151,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
         if edit_category == "Outros":
             edit_description = st.text_input(
-                "Descrição obrigatória",
+                "Descrição da categoria Outros",
                 value=str(selected_row["description"] or ""),
                 key=f"edit_description_{page}_{selected_id}",
             )
@@ -137,7 +160,7 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
     with col3:
         edit_value = st.number_input(
-            "Valor",
+            "Valor em euros",
             min_value=0.0,
             step=1.0,
             value=float(selected_row["value"]),
@@ -146,50 +169,50 @@ def edit_transaction_panel(page: str, page_df: pd.DataFrame, categories: list[st
 
     with col4:
         edit_date = st.date_input(
-            "Data",
+            "Data do movimento",
             value=pd.to_datetime(selected_row["date"]).date(),
             max_value=date.today(),
             key=f"edit_date_{page}_{selected_id}",
         )
 
-    col_save, col_delete = st.columns(2)
-
-    with col_save:
-        if st.button("Guardar alterações", key=f"save_transaction_{page}_{selected_id}", type="primary", use_container_width=True):
-            if edit_value <= 0:
-                st.error("O valor tem de ser superior a zero.")
-            elif edit_type == "Despesa" and edit_category == "Outros" and not edit_description.strip():
-                st.error("Na categoria Outros, a descrição é obrigatória.")
-            else:
-                execute_write(
-                    """
-                    UPDATE transactions
-                    SET person = :person,
-                        type = :type,
-                        category = :category,
-                        description = :description,
-                        value = :value,
-                        date = :date
-                    WHERE id = :id
-                    """,
-                    {
-                        "id": selected_id,
-                        "person": edit_person,
-                        "type": edit_type,
-                        "category": edit_category,
-                        "description": edit_description.strip(),
-                        "value": edit_value,
-                        "date": str(edit_date),
-                    },
-                )
-                st.success("Movimento atualizado.")
-                st.rerun()
-
-    with col_delete:
-        if st.button("Remover movimento", key=f"delete_transaction_{page}_{selected_id}", use_container_width=True):
-            execute_write("DELETE FROM transactions WHERE id = :id", {"id": selected_id})
-            st.success("Movimento removido.")
+    if st.button("Guardar alterações", key=f"save_transaction_{page}_{selected_id}", type="primary", use_container_width=True):
+        if edit_value <= 0:
+            st.error("O valor tem de ser superior a zero.")
+        elif edit_type == "Despesa" and edit_category == "Outros" and not edit_description.strip():
+            st.error("Na categoria Outros, a descrição é obrigatória.")
+        else:
+            execute_write(
+                """
+                UPDATE transactions
+                SET person = :person,
+                    type = :type,
+                    category = :category,
+                    description = :description,
+                    value = :value,
+                    date = :date
+                WHERE id = :id
+                """,
+                {
+                    "id": selected_id,
+                    "person": edit_person,
+                    "type": edit_type,
+                    "category": edit_category,
+                    "description": edit_description.strip(),
+                    "value": edit_value,
+                    "date": str(edit_date),
+                },
+            )
+            st.success("Movimento atualizado.")
             st.rerun()
+
+    st.markdown(
+        '<div class="danger-zone-note"><strong>Remover movimento</strong><br>Esta ação elimina apenas o movimento selecionado.</div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("Remover movimento", key=f"delete_transaction_{page}_{selected_id}", use_container_width=True):
+        execute_write("DELETE FROM transactions WHERE id = :id", {"id": selected_id})
+        st.success("Movimento removido.")
+        st.rerun()
 
 
 def render_money_line(title: str, meta: str, value: float, tone: str) -> None:
@@ -229,7 +252,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
         else:
             for _, row in salary_df.head(5).iterrows():
                 render_money_line(
-                    title="Salário",
+                    title=category_label("Salário"),
                     meta=f"{person} · {row['date']}",
                     value=float(row["value"]),
                     tone="income",
@@ -389,6 +412,8 @@ def render_goals(goals_df: pd.DataFrame) -> None:
         missing_value = max(target_value - current_value, 0)
         description = str(goal["description"] or "Sem descrição")
 
+        progress_percent = int(round(progress * 100))
+
         st.markdown(
             f"""
             <div class="goal-card">
@@ -396,9 +421,13 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                     <div>
                         <div class="goal-title">{escape(str(goal['name']))}</div>
                         <div class="movement-meta">{escape(description)}</div>
-                        <div class="goal-missing">Faltam {money(missing_value)}</div>
                     </div>
                     <div class="goal-amount">{money(current_value)} / {money(target_value)}</div>
+                </div>
+                <div class="goal-stats">
+                    <span class="goal-stat-pill">{progress_percent}% concluído</span>
+                    <span class="goal-stat-pill">Faltam {money(missing_value)}</span>
+                    <span class="goal-stat-pill">{money(current_value)} / {money(target_value)}</span>
                 </div>
             </div>
             """,
@@ -463,7 +492,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
         st.info("Ainda não existem categorias.")
         return
 
-    category_columns = st.columns(3)
+    category_columns = st.columns(4)
 
     for index, (_, category) in enumerate(categories_df.iterrows()):
         category_id = int(category["id"])

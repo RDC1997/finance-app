@@ -31,6 +31,8 @@ CATEGORY_ICONS = {
     "saude": "🩺",
     "lazer": "🎮",
     "outros": "📌",
+    "salário": "💸",
+    "salario": "💸",
 }
 
 CSS = """
@@ -363,8 +365,8 @@ CSS = """
 
     .movement-card {
         position: relative;
-        padding: .95rem 1.05rem;
-        margin-bottom: .75rem;
+        padding: .72rem .82rem;
+        margin-bottom: .55rem;
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
     }
 
@@ -398,15 +400,17 @@ CSS = """
 
     .movement-title {
         color: var(--text) !important;
-        font-weight: 850;
-        font-size: .98rem;
+        font-weight: 900;
+        font-size: .92rem;
+        line-height: 1.2;
     }
 
     .movement-meta,
     .small-muted {
         color: var(--muted) !important;
-        font-size: .84rem;
-        margin-top: .25rem;
+        font-size: .78rem;
+        font-weight: 700;
+        margin-top: .18rem;
     }
 
     .movement-badge {
@@ -517,7 +521,7 @@ CSS = """
 
     .income,
     .expense {
-        font-size: 1rem;
+        font-size: 1.05rem;
         font-weight: 900;
         white-space: nowrap;
     }
@@ -829,6 +833,19 @@ CSS = """
         transform: translateY(-1px);
     }
 
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #0f766e, #059669) !important;
+        border-color: #047857 !important;
+        color: #ffffff !important;
+        box-shadow: 0 12px 26px rgba(5, 150, 105, .20) !important;
+    }
+
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #047857, #065f46) !important;
+        border-color: #065f46 !important;
+        color: #ffffff !important;
+    }
+
     .stButton > button *,
     .stDownloadButton > button *,
     button[data-testid^="baseButton"] * {
@@ -912,44 +929,27 @@ CSS = """
 
 
     .sidebar-brand {
-        background:
-            radial-gradient(circle at 88% 8%, rgba(255,255,255,.38), transparent 2.7rem),
-            linear-gradient(135deg, #ef4444 0%, #be123c 54%, #7f1d1d 100%);
-        border: 1px solid rgba(255,255,255,.30);
-        border-radius: 1.25rem;
-        box-shadow: 0 16px 36px rgba(190, 18, 60, .24);
-        color: #ffffff !important;
-        margin: .35rem 0 1rem;
-        overflow: hidden;
-        padding: 1rem;
-        position: relative;
+        background: transparent !important;
+        border-bottom: 1px solid var(--line);
+        color: var(--text) !important;
+        margin: .25rem 0 .9rem;
+        padding: .25rem 0 .85rem;
     }
 
     .sidebar-brand-title {
-        color: #ffffff !important;
-        font-size: 1.18rem;
+        color: var(--text) !important;
+        font-size: 1.24rem;
         font-weight: 950;
-        letter-spacing: -.04em;
+        letter-spacing: -.045em;
         line-height: 1;
     }
 
     .sidebar-brand-subtitle {
-        color: rgba(255,255,255,.82) !important;
-        font-size: .78rem;
+        color: var(--muted) !important;
+        font-size: .8rem;
         font-weight: 750;
-        margin-top: .35rem;
-    }
-
-    .sidebar-brand-pill {
-        background: rgba(255,255,255,.16);
-        border: 1px solid rgba(255,255,255,.24);
-        border-radius: 999px;
-        color: #ffffff !important;
-        display: inline-flex;
-        font-size: .72rem;
-        font-weight: 850;
-        margin-top: .75rem;
-        padding: .24rem .55rem;
+        margin-top: .38rem;
+        line-height: 1.35;
     }
 
     .sidebar-section-label {
@@ -990,6 +990,82 @@ CSS = """
         display: inline-flex;
         margin: -.08rem 0 .55rem;
         padding: .16rem .5rem;
+    }
+
+
+
+    .form-caption {
+        color: var(--muted) !important;
+        font-size: .86rem;
+        font-weight: 750;
+        margin: -.25rem 0 .8rem;
+    }
+
+    .selected-movement-card,
+    .danger-zone-note {
+        background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.96)) !important;
+        border: 1px solid rgba(216, 224, 235, .95) !important;
+        border-radius: 1.05rem !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .055) !important;
+        margin: .2rem 0 .75rem;
+        padding: .82rem .9rem;
+    }
+
+    .selected-movement-eyebrow,
+    .edit-block-label {
+        color: var(--muted) !important;
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+    }
+
+    .selected-movement-title {
+        align-items: center;
+        color: var(--text) !important;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: .98rem;
+        font-weight: 900;
+        gap: .45rem;
+        margin-top: .18rem;
+    }
+
+    .selected-movement-meta {
+        color: var(--muted) !important;
+        font-size: .82rem;
+        font-weight: 750;
+        margin-top: .16rem;
+    }
+
+    .edit-block-label {
+        margin: .15rem 0 .25rem;
+    }
+
+    .danger-zone-note {
+        background: linear-gradient(135deg, #fff 0%, #fff7ed 100%) !important;
+        border-color: rgba(251, 146, 60, .22) !important;
+        color: #9a3412 !important;
+        font-size: .84rem;
+        font-weight: 750;
+        margin-top: .55rem;
+    }
+
+    .goal-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+        margin-top: .55rem;
+    }
+
+    .goal-stat-pill {
+        background: #f8fafc !important;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--text) !important;
+        font-size: .76rem;
+        font-weight: 850;
+        padding: .28rem .58rem;
     }
 
     .goal-card {
@@ -1194,7 +1270,6 @@ def sidebar_brand() -> None:
         <div class="sidebar-brand">
             <div class="sidebar-brand-title">Rubi &amp; Gabi</div>
             <div class="sidebar-brand-subtitle">Finanças do casal, simples e rápidas.</div>
-            <div class="sidebar-brand-pill">Mobile-first · Premium</div>
         </div>
         """,
         unsafe_allow_html=True,
