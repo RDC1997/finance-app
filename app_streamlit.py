@@ -10,6 +10,8 @@ from finance_ui import (
     MOVEMENT_TYPES,
     PEOPLE,
     apply_style,
+    category_icon,
+    category_label,
     filter_data,
     financial_summary,
     list_header,
@@ -17,6 +19,7 @@ from finance_ui import (
     movement_card,
     page_title,
     section_title,
+    sidebar_brand,
     summary_cards,
     transaction_label,
 )
@@ -248,7 +251,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
                     meta = f"Despesa · {category} · {row['date']}"
 
                 render_money_line(
-                    title=category,
+                    title=category_label(category),
                     meta=meta,
                     value=float(row["value"]),
                     tone="expense",
@@ -325,7 +328,7 @@ def render_goal_progress(progress: float) -> None:
                 <div class="goal-progress-percent">{progress_percent}% concluído</div>
             </div>
             <div class="goal-progress-track">
-                <div class="goal-progress-fill" style="width: {fill_width}%; background: {color};"></div>
+                <div class="goal-progress-fill" style="width: {fill_width}%; background: {color};">{progress_percent}%</div>
             </div>
         </div>
         """,
@@ -337,10 +340,17 @@ def render_goals(goals_df: pd.DataFrame) -> None:
     page_title("Metas", "Acompanhar objetivos de forma simples.")
     section_title("Criar meta")
 
-    name = st.text_input("Nome da meta")
-    description = st.text_input("Descrição")
-    target = st.number_input("Objetivo", min_value=0.0, step=10.0)
-    current = st.number_input("Valor atual", min_value=0.0, step=10.0)
+    col_name, col_desc = st.columns(2)
+    with col_name:
+        name = st.text_input("Nome da meta")
+    with col_desc:
+        description = st.text_input("Descrição")
+
+    col_target, col_current = st.columns(2)
+    with col_target:
+        target = st.number_input("Objetivo", min_value=0.0, step=10.0)
+    with col_current:
+        current = st.number_input("Valor atual", min_value=0.0, step=10.0)
 
     if st.button("Criar meta", type="primary", use_container_width=True):
         if not name.strip():
@@ -376,15 +386,19 @@ def render_goals(goals_df: pd.DataFrame) -> None:
         current_value = float(goal["current_amount"])
         progress = min(current_value / target_value, 1) if target_value > 0 else 0
 
+        missing_value = max(target_value - current_value, 0)
+        description = str(goal["description"] or "Sem descrição")
+
         st.markdown(
             f"""
-            <div class="clean-box">
-                <div class="movement-top">
+            <div class="goal-card">
+                <div class="goal-title-row">
                     <div>
-                        <div class="movement-title">{escape(str(goal['name']))}</div>
-                        <div class="movement-meta">{escape(str(goal['description']))}</div>
+                        <div class="goal-title">{escape(str(goal['name']))}</div>
+                        <div class="movement-meta">{escape(description)}</div>
+                        <div class="goal-missing">Faltam {money(missing_value)}</div>
                     </div>
-                    <div class="income">{money(current_value)} / {money(target_value)}</div>
+                    <div class="goal-amount">{money(current_value)} / {money(target_value)}</div>
                 </div>
             </div>
             """,
@@ -393,7 +407,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 
         render_goal_progress(progress)
 
-        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        col1, col2, col3, col4 = st.columns([1.35, 1, 1, 1])
         goal_id = int(goal["id"])
 
         with col1:
@@ -427,7 +441,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Gerir categorias usadas nas despesas.")
 
-    form_col, _ = st.columns([1, 1])
+    form_col, _ = st.columns([0.9, 1.1])
 
     with form_col:
         new_category = st.text_input("Nova categoria")
@@ -449,7 +463,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
         st.info("Ainda não existem categorias.")
         return
 
-    category_columns = st.columns(4)
+    category_columns = st.columns(3)
 
     for index, (_, category) in enumerate(categories_df.iterrows()):
         category_id = int(category["id"])
@@ -460,7 +474,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
             st.markdown(
                 f"""
                 <div class="category-grid-card">
-                    <span class="category-dot"></span>
+                    <span class="category-icon">{escape(category_icon(category_name))}</span>
                     <div class="category-name">{escape(category_name)}</div>
                 </div>
                 """,
@@ -485,6 +499,33 @@ def render_export(filtered_df: pd.DataFrame) -> None:
     export_columns = ["person", "type", "category", "description", "value", "date"]
     export_view = filtered_df[export_columns].copy()
     export_view.columns = ["Pessoa", "Tipo", "Categoria", "Descrição", "Valor", "Data"]
+    income, expense, balance = financial_summary(filtered_df)
+
+    st.markdown(
+        f"""
+        <div class="export-summary-card">
+            <div class="export-summary-grid">
+                <div class="export-summary-item">
+                    <div class="export-summary-label">Movimentos</div>
+                    <div class="export-summary-value">{len(export_view)}</div>
+                </div>
+                <div class="export-summary-item">
+                    <div class="export-summary-label">Salários</div>
+                    <div class="export-summary-value income">{money(income)}</div>
+                </div>
+                <div class="export-summary-item">
+                    <div class="export-summary-label">Despesas</div>
+                    <div class="export-summary-value expense">{money(expense)}</div>
+                </div>
+                <div class="export-summary-item">
+                    <div class="export-summary-label">Saldo</div>
+                    <div class="export-summary-value">{money(balance)}</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.dataframe(export_view, use_container_width=True, hide_index=True)
 
@@ -498,10 +539,10 @@ def render_export(filtered_df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    st.sidebar.title("💰 Rubi & Gabi")
-    st.sidebar.caption("Gestão financeira simples")
+    sidebar_brand()
+    st.sidebar.markdown('<div class="sidebar-section-label">Menu</div>', unsafe_allow_html=True)
 
-    page = st.sidebar.radio("Menu", ["Casal", "Ruben", "Gabi", "Metas", "Categorias", "Exportar"])
+    page = st.sidebar.radio("Menu", ["Casal", "Ruben", "Gabi", "Metas", "Categorias", "Exportar"], label_visibility="collapsed")
 
     transactions_df = load_transactions()
     filtered_df = filter_data(transactions_df)

@@ -21,6 +21,18 @@ MONTHS = {
     "Dezembro": 12,
 }
 
+CATEGORY_ICONS = {
+    "casa": "🏠",
+    "compras": "🛒",
+    "comida": "🍽️",
+    "contas": "💡",
+    "transportes": "🚗",
+    "saúde": "🩺",
+    "saude": "🩺",
+    "lazer": "🎮",
+    "outros": "📌",
+}
+
 CSS = """
 <style>
     :root {
@@ -47,6 +59,7 @@ CSS = """
         --shadow-soft: 0 10px 28px rgba(15, 23, 42, .06);
         --shadow-card: 0 12px 30px rgba(15, 23, 42, .075);
         --radius: 1.1rem;
+        --radius-sm: .9rem;
     }
 
     *,
@@ -71,9 +84,9 @@ CSS = """
 
     [data-testid="stAppViewBlockContainer"],
     .block-container {
-        padding-top: 2.35rem;
-        padding-bottom: 3rem;
-        max-width: 1340px;
+        padding-top: 1.75rem;
+        padding-bottom: 2.25rem;
+        max-width: 1180px;
     }
 
     header,
@@ -139,11 +152,11 @@ CSS = """
         letter-spacing: -.015em;
     }
 
-    .hero { margin-bottom: 1.6rem; }
+    .hero { margin-bottom: 1.1rem; }
 
     .title {
         color: var(--text) !important;
-        font-size: clamp(2rem, 4vw, 3.15rem);
+        font-size: clamp(1.85rem, 5vw, 2.85rem);
         font-weight: 900;
         letter-spacing: -1.35px;
         line-height: 1.02;
@@ -153,14 +166,14 @@ CSS = """
         color: var(--muted) !important;
         font-size: 1rem;
         line-height: 1.55;
-        margin-top: .55rem;
+        margin-top: .42rem;
     }
 
     .section-title {
         color: var(--text) !important;
         font-size: 1.22rem;
         font-weight: 850;
-        margin: 1.45rem 0 .85rem;
+        margin: 1.05rem 0 .65rem;
         letter-spacing: -.35px;
     }
 
@@ -181,8 +194,8 @@ CSS = """
         position: relative;
         overflow: hidden;
         padding: 1rem 1.05rem;
-        margin-bottom: .7rem;
-        min-height: 104px;
+        margin-bottom: .55rem;
+        min-height: 96px;
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
     }
 
@@ -304,18 +317,18 @@ CSS = """
     .card-value,
     [data-testid="stMetricValue"] {
         color: var(--text) !important;
-        font-size: 1.58rem;
+        font-size: 1.52rem;
         font-weight: 900;
         letter-spacing: -.7px;
         line-height: 1.1;
-        margin-top: .55rem;
+        margin-top: .42rem;
         position: relative;
         z-index: 1;
     }
 
     .clean-box {
-        padding: 1.25rem;
-        margin-bottom: 1rem;
+        padding: 1rem;
+        margin-bottom: .85rem;
         box-shadow: var(--shadow) !important;
     }
 
@@ -330,7 +343,7 @@ CSS = """
         align-items: flex-end;
         justify-content: space-between;
         gap: 1rem;
-        margin: 1.45rem 0 .85rem;
+        margin: 1.05rem 0 .65rem;
     }
 
     .list-header .section-title {
@@ -784,7 +797,8 @@ CSS = """
         border: 1px solid var(--line-strong) !important;
         border-radius: .9rem !important;
         font-weight: 800 !important;
-        padding: .58rem 1rem !important;
+        min-height: 2.65rem !important;
+        padding: .58rem .95rem !important;
         box-shadow: 0 8px 18px rgba(15, 23, 42, .05) !important;
     }
 
@@ -895,8 +909,157 @@ CSS = """
         text-align: center;
     }
 
+
+
+    .sidebar-brand {
+        background:
+            radial-gradient(circle at 88% 8%, rgba(255,255,255,.38), transparent 2.7rem),
+            linear-gradient(135deg, #ef4444 0%, #be123c 54%, #7f1d1d 100%);
+        border: 1px solid rgba(255,255,255,.30);
+        border-radius: 1.25rem;
+        box-shadow: 0 16px 36px rgba(190, 18, 60, .24);
+        color: #ffffff !important;
+        margin: .35rem 0 1rem;
+        overflow: hidden;
+        padding: 1rem;
+        position: relative;
+    }
+
+    .sidebar-brand-title {
+        color: #ffffff !important;
+        font-size: 1.18rem;
+        font-weight: 950;
+        letter-spacing: -.04em;
+        line-height: 1;
+    }
+
+    .sidebar-brand-subtitle {
+        color: rgba(255,255,255,.82) !important;
+        font-size: .78rem;
+        font-weight: 750;
+        margin-top: .35rem;
+    }
+
+    .sidebar-brand-pill {
+        background: rgba(255,255,255,.16);
+        border: 1px solid rgba(255,255,255,.24);
+        border-radius: 999px;
+        color: #ffffff !important;
+        display: inline-flex;
+        font-size: .72rem;
+        font-weight: 850;
+        margin-top: .75rem;
+        padding: .24rem .55rem;
+    }
+
+    .sidebar-section-label {
+        color: #475569 !important;
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .08em;
+        margin: .75rem 0 .35rem;
+        text-transform: uppercase;
+    }
+
+    [data-testid="stSidebar"] .stSelectbox,
+    [data-testid="stSidebar"] .stTextInput {
+        margin-bottom: .28rem;
+    }
+
+    .category-icon {
+        align-items: center;
+        background: #fff1f2;
+        border: 1px solid #ffe4e6;
+        border-radius: .78rem;
+        display: inline-flex;
+        flex: 0 0 2rem;
+        height: 2rem;
+        justify-content: center;
+        width: 2rem;
+    }
+
+    .category-grid-card {
+        min-height: 2.8rem;
+        padding: .52rem .6rem;
+    }
+
+    .category-protected {
+        background: #f1f5f9;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        display: inline-flex;
+        margin: -.08rem 0 .55rem;
+        padding: .16rem .5rem;
+    }
+
+    .goal-card {
+        background: rgba(255, 255, 255, .96) !important;
+        border: 1px solid rgba(216, 224, 235, .95) !important;
+        border-radius: 1.2rem !important;
+        box-shadow: var(--shadow-soft) !important;
+        margin-bottom: .65rem;
+        padding: .95rem;
+    }
+
+    .goal-title-row,
+    .export-summary-grid {
+        align-items: center;
+        display: flex;
+        gap: .8rem;
+        justify-content: space-between;
+    }
+
+    .goal-title { color: var(--text) !important; font-size: 1rem; font-weight: 900; }
+
+    .goal-amount { color: var(--green-deep) !important; font-size: .96rem; font-weight: 950; white-space: nowrap; }
+
+    .goal-missing { color: var(--muted) !important; font-size: .84rem; font-weight: 800; margin-top: .25rem; }
+
+    .goal-progress-track {
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, .10);
+    }
+
+    .goal-progress-fill {
+        align-items: center;
+        color: #ffffff !important;
+        display: flex;
+        font-size: .68rem;
+        font-weight: 950;
+        justify-content: center;
+        min-width: 1.8rem;
+        text-shadow: 0 1px 1px rgba(0,0,0,.18);
+    }
+
+    .export-summary-card {
+        background:
+            radial-gradient(circle at 100% 0%, rgba(239,68,68,.12), transparent 9rem),
+            rgba(255,255,255,.96) !important;
+        border: 1px solid rgba(216, 224, 235, .95) !important;
+        border-radius: 1.2rem;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: .9rem;
+        padding: 1rem;
+    }
+
+    .export-summary-item { min-width: 0; }
+
+    .export-summary-label {
+        color: var(--muted) !important;
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .export-summary-value {
+        color: var(--text) !important;
+        font-size: 1.08rem;
+        font-weight: 950;
+        margin-top: .2rem;
+    }
+
     .goal-progress-wrap {
-        margin: .7rem 0 .95rem;
+        margin: .65rem 0 .85rem;
     }
 
     .goal-progress-meta {
@@ -937,10 +1100,24 @@ CSS = """
     @media (max-width: 760px) {
         [data-testid="stAppViewBlockContainer"],
         .block-container {
-            padding-left: 1rem;
-            padding-right: 1rem;
-            padding-top: 1.4rem;
+            padding-left: .85rem;
+            padding-right: .85rem;
+            padding-top: 1.05rem;
+            max-width: 100%;
         }
+
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap;
+            gap: .55rem;
+        }
+
+        [data-testid="stHorizontalBlock"] > div {
+            min-width: min(100%, 18rem) !important;
+        }
+
+        .title { font-size: 1.75rem; }
+
+        .subtitle { font-size: .92rem; }
 
         .card {
             min-height: auto;
@@ -955,8 +1132,18 @@ CSS = """
             padding: 1rem;
         }
 
-        .movement-top {
+        .movement-top,
+        .goal-title-row,
+        .export-summary-grid {
             align-items: flex-start;
+            flex-direction: column;
+            gap: .45rem;
+        }
+
+        .movement-top .income,
+        .movement-top .expense,
+        .goal-amount {
+            width: 100%;
         }
 
         .income,
@@ -969,6 +1156,20 @@ CSS = """
             flex-direction: column;
             gap: .45rem;
         }
+
+        .category-grid-card { margin-bottom: .2rem; }
+
+        .stButton > button,
+        .stDownloadButton > button {
+            min-height: 2.85rem !important;
+        }
+    }
+
+    @media (min-width: 761px) and (max-width: 1100px) {
+        [data-testid="stAppViewBlockContainer"],
+        .block-container {
+            max-width: 980px;
+        }
     }
 </style>
 """
@@ -976,6 +1177,28 @@ CSS = """
 
 def apply_style() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def category_icon(category: str) -> str:
+    return CATEGORY_ICONS.get(str(category).strip().lower(), "📌")
+
+
+def category_label(category: str) -> str:
+    clean_category = str(category or "Outros").strip() or "Outros"
+    return f"{category_icon(clean_category)} {clean_category}"
+
+
+def sidebar_brand() -> None:
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-title">Rubi &amp; Gabi</div>
+            <div class="sidebar-brand-subtitle">Finanças do casal, simples e rápidas.</div>
+            <div class="sidebar-brand-pill">Mobile-first · Premium</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def money(value) -> str:
@@ -1033,6 +1256,7 @@ def movement_card(row: pd.Series) -> None:
     badge_class = "income-badge" if is_income else "expense-badge"
     signal = "+" if is_income else "-"
     description = str(row.get("description") or "").strip()
+    category_text = category_label(str(row["category"]))
     desc_text = f" · {escape(description)}" if description else ""
 
     st.markdown(
@@ -1041,7 +1265,7 @@ def movement_card(row: pd.Series) -> None:
             <div class="movement-top">
                 <div>
                     <div class="movement-heading">
-                        <div class="movement-title">{escape(str(row['category']))}</div>
+                        <div class="movement-title">{escape(category_text)}</div>
                         <span class="movement-badge {badge_class}">{escape(str(row['type']))}</span>
                     </div>
                     <div class="movement-meta"><span class="movement-date">{escape(str(row['date']))}</span> · {escape(str(row['person']))}{desc_text}</div>
@@ -1061,7 +1285,7 @@ def filter_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     filtered = dataframe.copy()
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Filtros")
+    st.sidebar.markdown('<div class="sidebar-section-label">Filtros rápidos</div>', unsafe_allow_html=True)
 
     selected_person = st.sidebar.selectbox("Pessoa", ["Todos"] + PEOPLE)
 
