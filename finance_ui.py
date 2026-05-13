@@ -21,18 +21,18 @@ MONTHS = {
     "Dezembro": 12,
 }
 
-CATEGORY_ICONS = {
-    "casa": "🏠",
-    "compras": "🛒",
-    "comida": "🍽️",
-    "contas": "💡",
-    "transportes": "🚗",
-    "saúde": "🩺",
-    "saude": "🩺",
-    "lazer": "🎮",
-    "outros": "📌",
-    "salário": "💸",
-    "salario": "💸",
+CATEGORY_TONES = {
+    "salário": "income",
+    "salario": "income",
+    "casa": "home",
+    "compras": "shopping",
+    "comida": "food",
+    "contas": "bills",
+    "transportes": "transport",
+    "saúde": "health",
+    "saude": "health",
+    "lazer": "leisure",
+    "outros": "other",
 }
 
 CSS = """
@@ -1173,6 +1173,74 @@ CSS = """
         transition: width .45s ease, background .25s ease;
     }
 
+
+
+    .category-tone-income { background: linear-gradient(135deg, #34d399, #059669) !important; }
+    .category-tone-home { background: linear-gradient(135deg, #60a5fa, #2563eb) !important; }
+    .category-tone-shopping { background: linear-gradient(135deg, #a78bfa, #7c3aed) !important; }
+    .category-tone-food { background: linear-gradient(135deg, #fb923c, #ea580c) !important; }
+    .category-tone-bills { background: linear-gradient(135deg, #facc15, #d97706) !important; }
+    .category-tone-transport { background: linear-gradient(135deg, #38bdf8, #0284c7) !important; }
+    .category-tone-health { background: linear-gradient(135deg, #f472b6, #db2777) !important; }
+    .category-tone-leisure { background: linear-gradient(135deg, #818cf8, #4f46e5) !important; }
+    .category-tone-other { background: linear-gradient(135deg, #94a3b8, #475569) !important; }
+
+    .category-dot {
+        border: 2px solid rgba(255, 255, 255, .95);
+        border-radius: 999px;
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, .08), 0 4px 10px rgba(15, 23, 42, .08);
+        display: inline-flex;
+        flex: 0 0 .68rem;
+        height: .68rem;
+        width: .68rem;
+    }
+
+    .category-dot-large {
+        flex-basis: .82rem;
+        height: .82rem;
+        width: .82rem;
+    }
+
+    .category-grid-card {
+        position: relative;
+        justify-content: flex-start;
+    }
+
+    .category-grid-card::before {
+        background: linear-gradient(180deg, rgba(239, 68, 68, .55), rgba(15, 118, 110, .45));
+        border-radius: 999px;
+        content: "";
+        height: 58%;
+        left: 0;
+        position: absolute;
+        top: 21%;
+        width: 3px;
+    }
+
+    .selected-movement-card {
+        border-left: 4px solid rgba(15, 118, 110, .35) !important;
+    }
+
+    .edit-block-label {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        display: inline-flex;
+        padding: .22rem .58rem;
+    }
+
+    .goal-card {
+        border-left: 4px solid rgba(15, 118, 110, .40) !important;
+    }
+
+    .goal-card + .goal-progress-wrap {
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(216,224,235,.9);
+        border-radius: 1rem;
+        box-shadow: 0 8px 18px rgba(15,23,42,.045);
+        padding: .75rem .85rem .85rem;
+    }
+
     @media (max-width: 760px) {
         [data-testid="stAppViewBlockContainer"],
         .block-container {
@@ -1255,13 +1323,13 @@ def apply_style() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-def category_icon(category: str) -> str:
-    return CATEGORY_ICONS.get(str(category).strip().lower(), "📌")
-
-
 def category_label(category: str) -> str:
-    clean_category = str(category or "Outros").strip() or "Outros"
-    return f"{category_icon(clean_category)} {clean_category}"
+    return str(category or "Outros").strip() or "Outros"
+
+
+def category_tone_class(category: str) -> str:
+    tone = CATEGORY_TONES.get(str(category).strip().lower(), "other")
+    return f"category-tone-{tone}"
 
 
 def sidebar_brand() -> None:
@@ -1283,12 +1351,12 @@ def money(value) -> str:
 def card(title: str, value: str, tone: str = "neutral") -> None:
     tone_class = f" card-{tone}"
     icon_map = {
-        "income": "↗",
-        "expense": "↘",
-        "balance-positive": "✓",
+        "income": "+",
+        "expense": "-",
+        "balance-positive": "OK",
         "balance-negative": "!",
-        "balance-neutral": "•",
-        "neutral": "•",
+        "balance-neutral": "=",
+        "neutral": "=",
     }
     icon = icon_map.get(tone, "•")
 
@@ -1331,7 +1399,9 @@ def movement_card(row: pd.Series) -> None:
     badge_class = "income-badge" if is_income else "expense-badge"
     signal = "+" if is_income else "-"
     description = str(row.get("description") or "").strip()
-    category_text = category_label(str(row["category"]))
+    category_raw = str(row["category"])
+    category_text = category_label(category_raw)
+    category_tone = category_tone_class(category_raw)
     desc_text = f" · {escape(description)}" if description else ""
 
     st.markdown(
@@ -1340,6 +1410,7 @@ def movement_card(row: pd.Series) -> None:
             <div class="movement-top">
                 <div>
                     <div class="movement-heading">
+                        <span class="category-dot {category_tone}" aria-hidden="true"></span>
                         <div class="movement-title">{escape(category_text)}</div>
                         <span class="movement-badge {badge_class}">{escape(str(row['type']))}</span>
                     </div>

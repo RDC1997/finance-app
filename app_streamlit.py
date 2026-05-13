@@ -10,8 +10,8 @@ from finance_ui import (
     MOVEMENT_TYPES,
     PEOPLE,
     apply_style,
-    category_icon,
     category_label,
+    category_tone_class,
     filter_data,
     financial_summary,
     list_header,
@@ -24,7 +24,7 @@ from finance_ui import (
     transaction_label,
 )
 
-st.set_page_config(page_title="Rubi & Gabi Finance", layout="wide", page_icon="💰")
+st.set_page_config(page_title="Rubi & Gabi Finance", layout="wide", page_icon="€")
 apply_style()
 init_database()
 
@@ -245,7 +245,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
     col_salary, col_expense = st.columns(2)
 
     with col_salary:
-        st.markdown('<div class="compact-panel-title salary-title">↗ Salários</div>', unsafe_allow_html=True)
+        st.markdown('<div class="compact-panel-title salary-title">Salários</div>', unsafe_allow_html=True)
 
         if salary_df.empty:
             st.markdown('<div class="empty-mini-card">Sem salário registado.</div>', unsafe_allow_html=True)
@@ -259,7 +259,7 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
                 )
 
     with col_expense:
-        st.markdown('<div class="compact-panel-title expense-title">↘ Despesas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="compact-panel-title expense-title">Despesas</div>', unsafe_allow_html=True)
 
         if expense_df.empty:
             st.markdown('<div class="empty-mini-card">Sem despesas registadas.</div>', unsafe_allow_html=True)
@@ -503,7 +503,7 @@ def render_categories(categories_df: pd.DataFrame) -> None:
             st.markdown(
                 f"""
                 <div class="category-grid-card">
-                    <span class="category-icon">{escape(category_icon(category_name))}</span>
+                    <span class="category-dot category-dot-large {category_tone_class(category_name)}" aria-hidden="true"></span>
                     <div class="category-name">{escape(category_name)}</div>
                 </div>
                 """,
@@ -573,8 +573,11 @@ def main() -> None:
 
     page = st.sidebar.radio("Menu", ["Casal", "Ruben", "Gabi", "Metas", "Categorias", "Exportar"], label_visibility="collapsed")
 
-    transactions_df = load_transactions()
-    filtered_df = filter_data(transactions_df)
+    if page in ["Casal", "Ruben", "Gabi", "Exportar"]:
+        transactions_df = load_transactions()
+        filtered_df = filter_data(transactions_df)
+    else:
+        filtered_df = pd.DataFrame()
 
     if page == "Casal":
         render_dashboard(filtered_df)
