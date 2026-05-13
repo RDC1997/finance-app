@@ -1241,6 +1241,250 @@ CSS = """
         padding: .75rem .85rem .85rem;
     }
 
+
+
+    .family-dashboard-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1.35fr 1fr 1fr;
+        margin: .25rem 0 1rem;
+    }
+
+    .family-main-card,
+    .family-insight-card,
+    .person-family-card,
+    .family-goals-strip {
+        background: rgba(255,255,255,.97) !important;
+        border: 1px solid rgba(216,224,235,.95) !important;
+        border-radius: 1.35rem;
+        box-shadow: 0 18px 40px rgba(15,23,42,.09);
+        color: var(--text) !important;
+        overflow: hidden;
+        padding: 1.05rem;
+        position: relative;
+    }
+
+    .family-main-card::after,
+    .family-insight-card::after {
+        border-radius: 999px;
+        content: "";
+        height: 6rem;
+        position: absolute;
+        right: -2rem;
+        top: -2.2rem;
+        width: 6rem;
+    }
+
+    .family-main-card.balance-card {
+        background: linear-gradient(135deg, #0f766e 0%, #059669 54%, #22c55e 100%) !important;
+        border-color: rgba(5,150,105,.38) !important;
+        box-shadow: 0 24px 55px rgba(5,150,105,.24);
+        color: #ffffff !important;
+        min-height: 9.5rem;
+    }
+
+    .family-main-card.balance-card .family-label,
+    .family-main-card.balance-card .family-note,
+    .family-main-card.balance-card .family-balance {
+        color: #ffffff !important;
+    }
+
+    .family-main-card.balance-card .family-note { opacity: .88; }
+
+    .income-card {
+        background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%) !important;
+        border-color: rgba(5,150,105,.20) !important;
+    }
+
+    .expense-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fff7ed 55%, #fee2e2 100%) !important;
+        border-color: rgba(220,38,38,.18) !important;
+    }
+
+    .income-card::after { background: rgba(16,185,129,.12); }
+    .expense-card::after { background: rgba(239,68,68,.12); }
+
+    .family-label {
+        color: var(--muted) !important;
+        font-size: .76rem;
+        font-weight: 950;
+        letter-spacing: .07em;
+        text-transform: uppercase;
+    }
+
+    .family-balance {
+        font-size: clamp(2.15rem, 5vw, 3.35rem);
+        font-weight: 950;
+        letter-spacing: -1.5px;
+        line-height: 1.02;
+        margin-top: .7rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .family-value {
+        font-size: 1.55rem;
+        font-weight: 950;
+        margin-top: .65rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .family-note {
+        color: var(--muted) !important;
+        font-size: .82rem;
+        font-weight: 750;
+        line-height: 1.4;
+        margin-top: .45rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .family-insight-grid,
+    .person-summary-grid {
+        display: grid;
+        gap: .9rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: .75rem 0 1rem;
+    }
+
+    .family-insight-title {
+        color: var(--text) !important;
+        font-size: 1.08rem;
+        font-weight: 950;
+        margin-top: .35rem;
+    }
+
+    .family-insight-value {
+        font-size: 1.2rem;
+        font-weight: 950;
+        margin-top: .2rem;
+    }
+
+    .person-summary-row {
+        align-items: center;
+        border-bottom: 1px solid rgba(226,232,240,.9);
+        color: var(--text) !important;
+        display: flex;
+        font-size: .9rem;
+        font-weight: 800;
+        justify-content: space-between;
+        padding: .48rem 0;
+    }
+
+    .person-summary-row:last-child { border-bottom: 0; }
+    .person-summary-row.total { font-size: .98rem; font-weight: 950; }
+    .person-summary-row span { color: var(--muted) !important; }
+
+    .family-goals-strip {
+        align-items: center;
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%) !important;
+        border-color: rgba(15,118,110,.20) !important;
+        display: flex;
+        justify-content: space-between;
+        margin: .85rem 0 1rem;
+    }
+
+    .family-goals-amount {
+        color: var(--green-deep) !important;
+        font-size: 1rem;
+        font-weight: 950;
+        white-space: nowrap;
+    }
+
+    .card-balance-positive,
+    .card-balance-negative,
+    .card-balance-neutral {
+        transform: scale(1.01);
+    }
+
+    .card-balance-positive .card-value,
+    .card-balance-negative .card-value,
+    .card-balance-neutral .card-value {
+        font-size: 1.75rem;
+    }
+
+    .movement-card {
+        background: linear-gradient(135deg, rgba(255,255,255,.99), rgba(248,250,252,.98)) !important;
+        padding: .86rem .95rem;
+    }
+
+    .movement-top .income,
+    .movement-top .expense {
+        font-size: 1.13rem;
+        letter-spacing: -.25px;
+    }
+
+    .goal-card-rich {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 52%, #f0fdfa 100%) !important;
+        margin-top: .5rem;
+        padding: 1.1rem !important;
+    }
+
+    .goal-percent-center {
+        color: var(--text) !important;
+        font-size: clamp(1.9rem, 7vw, 2.8rem);
+        font-weight: 950;
+        letter-spacing: -1px;
+        line-height: 1;
+        margin: .8rem 0 .55rem;
+        text-align: center;
+    }
+
+    .goal-progress-track-large {
+        height: 1.15rem !important;
+        margin: .35rem 0 .7rem;
+    }
+
+    .goal-bottom-row {
+        align-items: center;
+        color: var(--muted) !important;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: .84rem;
+        font-weight: 800;
+        gap: .55rem;
+        justify-content: space-between;
+    }
+
+    .goal-bottom-row strong {
+        color: var(--green-deep) !important;
+    }
+
+    .category-grid-card-modern {
+        min-height: 3.45rem;
+        padding-right: .65rem;
+    }
+
+    .category-card-main {
+        align-items: center;
+        display: flex;
+        gap: .45rem;
+        justify-content: space-between;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .category-protected-badge {
+        background: #f1f5f9 !important;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #475569 !important;
+        flex: 0 0 auto;
+        font-size: .68rem;
+        font-weight: 900;
+        padding: .18rem .48rem;
+    }
+
+    .category-grid-card-modern + div .stButton > button,
+    .stButton > button[kind="secondary"] {
+        font-size: .84rem !important;
+    }
+
+    .export-summary-card {
+        margin-top: .65rem;
+    }
+
     @media (max-width: 760px) {
         [data-testid="stAppViewBlockContainer"],
         .block-container {
@@ -1302,6 +1546,29 @@ CSS = """
         }
 
         .category-grid-card { margin-bottom: .2rem; }
+
+
+
+        .family-dashboard-grid,
+        .family-insight-grid,
+        .person-summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .family-main-card.balance-card {
+            min-height: 8.4rem;
+        }
+
+        .family-goals-strip {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: .45rem;
+        }
+
+        .goal-bottom-row {
+            align-items: flex-start;
+            flex-direction: column;
+        }
 
         .stButton > button,
         .stDownloadButton > button {
