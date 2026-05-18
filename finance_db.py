@@ -56,6 +56,10 @@ SCHEMA_STATEMENTS = (
         current_amount FLOAT
     )
     """,
+    """
+    ALTER TABLE transactions
+    ADD COLUMN IF NOT EXISTS payment_source TEXT DEFAULT 'Salário'
+    """,
 )
 
 
