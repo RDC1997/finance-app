@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from html import escape
 
 import pandas as pd
@@ -49,9 +49,17 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
 
     category = "Salário"
     description = ""
+    payment_source = "Salário"
 
     if movement_type == "Despesa":
         category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
+        is_food_category = category.strip().lower() in {"comida", "alimentação", "alimentacao"}
+        if page == "Ruben" and is_food_category:
+            payment_source = st.selectbox(
+                "Origem do pagamento",
+                ["Salário", "Subsídio Alimentação"],
+                key=f"add_payment_source_{page}",
+            )
 
         if category == "Outros":
             description = st.text_input("Descrição obrigatória", key=f"add_description_{page}")
@@ -64,6 +72,8 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
     with col4:
         movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
 
+    if movement_type == "Salário" and page == "Ruben":
+        category = st.selectbox("Tipo de rendimento", ["Salário", "Subsídio Alimentação"], key=f"add_income_category_{page}")
     if st.button("Adicionar movimento", key=f"add_button_{page}", type="primary", use_container_width=True):
         if value <= 0:
             st.error("O valor tem de ser superior a zero.")
@@ -73,9 +83,9 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
             execute_write(
                 """
                 INSERT INTO transactions
-                (person, type, category, description, value, date)
+                (person, type, category, description, value, date, payment_source)
                 VALUES
-                (:person, :type, :category, :description, :value, :date)
+                (:person, :type, :category, :description, :value, :date, :payment_source)
                 """,
                 {
                     "person": person,
@@ -84,6 +94,7 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
                     "description": description.strip(),
                     "value": value,
                     "date": str(movement_date),
+                    "payment_source": payment_source,
                 },
             )
             st.success("Movimento adicionado.")
@@ -313,9 +324,21 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
     top_category = str(category_totals.index[0]) if not category_totals.empty else "Sem despesas"
     top_category_value = float(category_totals.iloc[0]) if not category_totals.empty else 0.0
 
+    month_start = pd.Timestamp.today().replace(day=1).date()
+    last_month_end = month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+    current_month_df = filtered_df[pd.to_datetime(filtered_df["date"], errors="coerce").dt.date >= month_start]
+    prev_month_df = filtered_df[
+        (pd.to_datetime(filtered_df["date"], errors="coerce").dt.date >= last_month_start)
+        & (pd.to_datetime(filtered_df["date"], errors="coerce").dt.date <= last_month_end)
+    ]
+    _, _, current_balance = financial_summary(current_month_df)
+    _, _, prev_balance = financial_summary(prev_month_df)
+    delta_balance = current_balance - prev_balance
+    motiv = "Excelente foco financeiro 💚" if balance >= 0 else "Hora de ajustar com calma ❤️"
     st.markdown(
         f"""
-        <div class="family-dashboard-grid">
+        <div class="family-dashboard-grid premium-dashboard">
             <div class="family-main-card balance-card">
                 <div class="family-label">Saldo disponível</div>
                 <div class="family-balance {balance_class_name(balance)}">{money(balance)}</div>
@@ -329,6 +352,11 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
                 <div class="family-label">Despesas totais</div>
                 <div class="family-value expense">{money(expense)}</div>
             </div>
+        </div>
+        <div class="family-insight-card">
+            <div class="family-label">Resumo rápido do mês</div>
+            <div class="family-insight-title">Comparação com mês anterior: {money(delta_balance)}</div>
+            <div class="family-note">{motiv}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -406,6 +434,25 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
     page_df = filtered_df[filtered_df["person"].isin(people)] if not filtered_df.empty else pd.DataFrame()
 
     summary_cards(page_df)
+    if page == "Ruben":
+        card_allowance = page_df[(page_df["type_normalized"] == "salário") & (page_df["category"] == "Subsídio Alimentação")]
+        food_expenses = page_df[page_df["type_normalized"] == "despesa"]
+        food_expenses = food_expenses[food_expenses["category"].str.lower().isin(["comida", "alimentação", "alimentacao"])]
+        payment_series = food_expenses["payment_source"] if "payment_source" in food_expenses.columns else pd.Series("Salário", index=food_expenses.index)
+        food_by_card = food_expenses[payment_series == "Subsídio Alimentação"]["value"].sum() if not food_expenses.empty else 0
+        food_by_salary = food_expenses[payment_series != "Subsídio Alimentação"]["value"].sum() if not food_expenses.empty else 0
+        allowance_total = card_allowance["value"].sum() if not card_allowance.empty else 0
+        allowance_balance = allowance_total - food_by_card
+        st.markdown(
+            f"""
+            <div class="family-insight-grid">
+                <div class="family-insight-card"><div class="family-label">Cartão alimentação</div><div class="family-insight-title">{money(allowance_balance)}</div><div class="family-note">Saldo restante</div></div>
+                <div class="family-insight-card"><div class="family-label">Gasto via cartão</div><div class="family-insight-value expense">-{money(food_by_card)}</div></div>
+                <div class="family-insight-card"><div class="family-label">Gasto via salário</div><div class="family-insight-value expense">-{money(food_by_salary)}</div></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     form_col, list_col = st.columns([0.95, 1.25])
 
@@ -539,11 +586,14 @@ def render_goals(goals_df: pd.DataFrame) -> None:
         color = goal_progress_color(progress_percent)
         goal_id = int(goal["id"])
 
+        missing_days = max((date.today().replace(day=28) + timedelta(days=4)).replace(day=1) - date.today(), timedelta(days=0)).days
+        medal = "🥇" if progress_percent >= 100 else "🚀" if progress_percent >= 75 else "🔥" if progress_percent >= 40 else "🌱"
+        state = "Concluída" if progress_percent >= 100 else "Quase concluída" if progress_percent >= 75 else "Em progresso" if progress_percent >= 25 else "Início"
         st.markdown(
             f"""
             <div class="goal-card goal-card-rich">
                 <div class="goal-title-row">
-                    <div class="goal-title">{escape(str(goal['name']))}</div>
+                    <div class="goal-title">{medal} {escape(str(goal['name']))}</div>
                     <div class="goal-amount">{money(current_value)} / {money(target_value)}</div>
                 </div>
                 <div class="goal-percent-center">{progress_percent}%</div>
@@ -551,7 +601,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                     <div class="goal-progress-fill" style="width: {fill_width}%; background: {color};"></div>
                 </div>
                 <div class="goal-bottom-row">
-                    <span>Faltam {money(missing_value)}</span>
+                    <span>{state} · Faltam {money(missing_value)} · {missing_days} dias</span>
                     <strong>{escape(goal_message(progress_percent))}</strong>
                 </div>
             </div>
@@ -587,7 +637,9 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Organizar despesas sem complicar.")
 
-    with st.expander("Adicionar categoria"):
+    protected_categories = {"outros", "comida", "alimentação", "alimentacao"}
+    with st.container():
+        section_title("Adicionar categoria")
         new_category = st.text_input("Nova categoria")
 
         if st.button("Adicionar categoria", type="primary", use_container_width=True):
@@ -601,38 +653,22 @@ def render_categories(categories_df: pd.DataFrame) -> None:
                 except Exception:
                     st.error("Essa categoria já existe.")
 
-    section_title("Categorias existentes")
+    section_title("Remover categoria")
 
     if categories_df.empty:
         st.info("Ainda não existem categorias.")
         return
 
-    category_columns = st.columns(3)
-
-    for index, (_, category) in enumerate(categories_df.iterrows()):
-        category_id = int(category["id"])
-        category_name = str(category["name"])
-        is_protected = category_name.lower() == "outros"
-        badge = '<span class="category-protected-badge">Protegida</span>' if is_protected else ""
-
-        with category_columns[index % len(category_columns)]:
-            st.markdown(
-                f"""
-                <div class="category-grid-card category-grid-card-modern">
-                    <span class="category-dot category-dot-large {category_tone_class(category_name)}" aria-hidden="true"></span>
-                    <div class="category-card-main">
-                        <div class="category-name">{escape(category_name)}</div>
-                        {badge}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            if not is_protected and st.button("Remover", key=f"remove_cat_{category_id}", use_container_width=True):
-                execute_write("DELETE FROM categories WHERE id = :id", {"id": category_id})
-                st.success("Categoria removida.")
-                st.rerun()
+    removable_df = categories_df[~categories_df["name"].str.lower().isin(protected_categories)]
+    if removable_df.empty:
+        st.info("Não existem categorias removíveis neste momento.")
+        return
+    options = {row["name"]: int(row["id"]) for _, row in removable_df.iterrows()}
+    selected = st.selectbox("Seleciona categoria removível", list(options.keys()))
+    if st.button("Remover categoria", use_container_width=True):
+        execute_write("DELETE FROM categories WHERE id = :id", {"id": options[selected]})
+        st.success("Categoria removida.")
+        st.rerun()
 
 def render_export(transactions_df: pd.DataFrame) -> None:
     page_title("Exportar", "Escolher um mês e descarregar em Excel.")
