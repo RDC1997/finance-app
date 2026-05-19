@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 PEOPLE = ["Ruben", "Gabi"]
-MOVEMENT_TYPES = ["Salário", "Despesa"]
+MOVEMENT_TYPES = ["Salário", "Subsídio de Alimentação", "Despesa"]
 MONTHS = {
     "Todos": 0,
     "Janeiro": 1,
