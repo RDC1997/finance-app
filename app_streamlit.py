@@ -54,10 +54,10 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
     if movement_type == "Despesa":
         category = st.selectbox("Categoria", categories, key=f"add_category_{page}")
         is_food_category = category.strip().lower() in {"comida", "alimentação", "alimentacao"}
-        if page == "Ruben" and is_food_category:
+        if is_food_category:
             payment_source = st.selectbox(
-                "Origem do pagamento",
-                ["Salário", "Subsídio Alimentação"],
+                "Pago com",
+                ["Salário", "Cartão alimentação"],
                 key=f"add_payment_source_{page}",
             )
 
@@ -72,8 +72,8 @@ def add_transaction_form(page: str, people: list[str], categories: list[str]) ->
     with col4:
         movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{page}")
 
-    if movement_type == "Salário" and page == "Ruben":
-        category = st.selectbox("Tipo de rendimento", ["Salário", "Subsídio Alimentação"], key=f"add_income_category_{page}")
+    if movement_type in {"Salário", "Subsídio de Alimentação"}:
+        category = "Subsídio Alimentação" if movement_type == "Subsídio de Alimentação" else "Salário"
     if st.button("Adicionar movimento", key=f"add_button_{page}", type="primary", use_container_width=True):
         if value <= 0:
             st.error("O valor tem de ser superior a zero.")
@@ -309,6 +309,40 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
                 )
 
 
+
+
+def normalize_type_label(value: str) -> str:
+    value_norm = str(value or '').strip().lower()
+    if value_norm in {"salário", "salario"}:
+        return "Salário"
+    if value_norm in {"subsídio de alimentação", "subsidio de alimentação", "subsídio alimentação", "subsidio alimentacao", "subsídio alimentacao"}:
+        return "Subsídio de Alimentação"
+    return "Despesa"
+
+
+def person_financials(person_df: pd.DataFrame) -> dict:
+    salary_df = person_df[person_df["type_normalized"] == "salário"]
+    expense_df = person_df[person_df["type_normalized"] == "despesa"]
+    salary_income = salary_df[salary_df["category"].fillna("").str.lower() != "subsídio alimentação"]["value"].sum()
+    allowance_income = salary_df[salary_df["category"].fillna("").str.lower() == "subsídio alimentação"]["value"].sum()
+    food_df = expense_df[expense_df["category"].fillna("").str.lower().isin(["comida","alimentação","alimentacao"])]
+    payment_series = food_df["payment_source"] if "payment_source" in food_df.columns else pd.Series("Salário", index=food_df.index)
+    expense_card = food_df[payment_series == "Cartão alimentação"]["value"].sum() if not food_df.empty else 0
+    expense_salary_food = food_df[payment_series != "Cartão alimentação"]["value"].sum() if not food_df.empty else 0
+    non_food_expense = expense_df[~expense_df.index.isin(food_df.index)]["value"].sum() if not expense_df.empty else 0
+    expense_salary_total = expense_salary_food + non_food_expense
+    total_expense = expense_df["value"].sum() if not expense_df.empty else 0
+    return {
+        "salary_income": float(salary_income),
+        "allowance_income": float(allowance_income),
+        "expense_salary": float(expense_salary_total),
+        "expense_card": float(expense_card),
+        "total_expense": float(total_expense),
+        "salary_balance": float(salary_income - expense_salary_total),
+        "card_balance": float(allowance_income - expense_card),
+        "total_balance": float((salary_income + allowance_income) - total_expense),
+    }
+
 def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
     page_title("Casal", "A vossa visão familiar do mês, clara e tranquila.")
     income, expense, balance = financial_summary(filtered_df)
@@ -392,21 +426,15 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
         unsafe_allow_html=True,
     )
 
-    person_cards = []
-    for person in PEOPLE:
-        person_df = filtered_df[filtered_df["person"] == person]
-        person_income, person_expense, person_balance = financial_summary(person_df)
-        person_cards.append(
-            f"""
-            <div class="person-family-card">
-                <div class="family-label">Resumo {escape(person)}</div>
-                <div class="person-summary-row"><span>Salário</span><strong class="income">{money(person_income)}</strong></div>
-                <div class="person-summary-row"><span>Despesas</span><strong class="expense">{money(person_expense)}</strong></div>
-                <div class="person-summary-row total"><span>Saldo</span><strong>{money(person_balance)}</strong></div>
-            </div>
-            """
-        )
-    st.markdown(f'<div class="person-summary-grid">{"".join(person_cards)}</div>', unsafe_allow_html=True)
+    section_title("Comparação Ruben vs Gabi")
+    cols = st.columns(2)
+    for idx, person in enumerate(PEOPLE):
+        pdata = person_financials(filtered_df[filtered_df["person"] == person])
+        with cols[idx]:
+            st.markdown(f"**{person}**")
+            st.metric("Entradas", money(pdata["salary_income"] + pdata["allowance_income"]))
+            st.metric("Despesas", money(pdata["total_expense"]))
+            st.metric("Saldo", money(pdata["total_balance"]))
 
     if not goals_df.empty:
         total_target = float(goals_df["target_amount"].sum())
@@ -428,51 +456,38 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
 
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
-    page_title(page, "Adicionar, consultar, editar e remover movimentos.")
+    page_title(page, "Gestão simples e clara dos teus movimentos.")
+    page_df = filtered_df[filtered_df["person"] == page] if not filtered_df.empty else pd.DataFrame()
+    pdata = person_financials(page_df) if not page_df.empty else {k:0.0 for k in ["salary_income","allowance_income","total_expense","total_balance","expense_salary","expense_card","salary_balance","card_balance"]}
 
-    people = [page]
-    page_df = filtered_df[filtered_df["person"].isin(people)] if not filtered_df.empty else pd.DataFrame()
+    c1,c2,c3,c4=st.columns(4)
+    c1.metric("Salário", money(pdata["salary_income"]))
+    c2.metric("Subsídio alimentação", money(pdata["allowance_income"]))
+    c3.metric("Despesas", money(pdata["total_expense"]))
+    c4.metric("Saldo disponível", money(pdata["total_balance"]))
 
-    summary_cards(page_df)
-    if page == "Ruben":
-        card_allowance = page_df[(page_df["type_normalized"] == "salário") & (page_df["category"] == "Subsídio Alimentação")]
-        food_expenses = page_df[page_df["type_normalized"] == "despesa"]
-        food_expenses = food_expenses[food_expenses["category"].str.lower().isin(["comida", "alimentação", "alimentacao"])]
-        payment_series = food_expenses["payment_source"] if "payment_source" in food_expenses.columns else pd.Series("Salário", index=food_expenses.index)
-        food_by_card = food_expenses[payment_series == "Subsídio Alimentação"]["value"].sum() if not food_expenses.empty else 0
-        food_by_salary = food_expenses[payment_series != "Subsídio Alimentação"]["value"].sum() if not food_expenses.empty else 0
-        allowance_total = card_allowance["value"].sum() if not card_allowance.empty else 0
-        allowance_balance = allowance_total - food_by_card
-        st.markdown(
-            f"""
-            <div class="family-insight-grid">
-                <div class="family-insight-card"><div class="family-label">Cartão alimentação</div><div class="family-insight-title">{money(allowance_balance)}</div><div class="family-note">Saldo restante</div></div>
-                <div class="family-insight-card"><div class="family-label">Gasto via cartão</div><div class="family-insight-value expense">-{money(food_by_card)}</div></div>
-                <div class="family-insight-card"><div class="family-label">Gasto via salário</div><div class="family-insight-value expense">-{money(food_by_salary)}</div></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    st.markdown(f"""<div class='family-insight-grid'>
+    <div class='family-insight-card'><div class='family-label'>Salário recebido</div><div class='family-insight-title'>{money(pdata['salary_income'])}</div></div>
+    <div class='family-insight-card'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>
+    <div class='family-insight-card'><div class='family-label'>Pago com salário</div><div class='family-insight-value expense'>-{money(pdata['expense_salary'])}</div></div>
+    <div class='family-insight-card'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>
+    <div class='family-insight-card'><div class='family-label'>Saldo salário</div><div class='family-insight-title'>{money(pdata['salary_balance'])}</div></div>
+    <div class='family-insight-card'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>{money(pdata['card_balance'])}</div></div>
+    </div>""", unsafe_allow_html=True)
 
-    form_col, list_col = st.columns([0.95, 1.25])
-
+    form_col, list_col = st.columns([1, 1.2])
     with form_col:
-        add_transaction_form(page, people, categories)
-
+        add_transaction_form(page, [page], categories)
     with list_col:
         list_header("Movimentos recentes", 0 if page_df.empty else min(len(page_df), 8))
-
         if page_df.empty:
             st.info("Sem movimentos para mostrar.")
         else:
             for _, row in page_df.head(8).iterrows():
                 movement_card(row)
 
-    if page_df.empty:
-        return
-
-    edit_transaction_panel(page, page_df, categories)
-
+    if not page_df.empty:
+        edit_transaction_panel(page, page_df, categories)
 
 def goal_progress_color(progress_percent: int) -> str:
     if progress_percent < 25:
