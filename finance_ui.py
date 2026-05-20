@@ -1248,7 +1248,7 @@ CSS = """
     .family-dashboard-grid {
         display: grid;
         gap: 1rem;
-        grid-template-columns: 1.35fr 1fr 1fr 1fr;
+        grid-template-columns: 1.6fr 1fr 1fr 1fr;
         margin: .25rem 0 1rem;
     }
 
@@ -1278,11 +1278,15 @@ CSS = """
     }
 
     .family-main-card.balance-card {
-        background: linear-gradient(135deg, #0f766e 0%, #059669 54%, #22c55e 100%) !important;
-        border-color: rgba(5,150,105,.38) !important;
-        box-shadow: 0 24px 55px rgba(5,150,105,.24);
+        background: linear-gradient(140deg, #1d4ed8 0%, #0f766e 48%, #22c55e 100%) !important;
+        border-color: rgba(37,99,235,.34) !important;
+        box-shadow: 0 30px 70px rgba(15, 23, 42, .22), 0 18px 36px rgba(37,99,235,.24);
         color: #ffffff !important;
-        min-height: 9.5rem;
+        min-height: 12.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
     }
 
     .family-main-card.balance-card .family-label,
@@ -1316,6 +1320,7 @@ CSS = """
         font-weight: 950;
         letter-spacing: .07em;
         text-transform: uppercase;
+        text-align: center;
     }
 
     .family-balance {
@@ -1329,12 +1334,13 @@ CSS = """
     }
 
     .family-value {
-        font-size: 1.55rem;
+        font-size: 2.05rem;
         font-weight: 950;
         margin-top: .65rem;
         position: relative;
         z-index: 1;
         font-variant-numeric: tabular-nums;
+        text-align: center;
     }
 
     .family-note {
@@ -1345,13 +1351,14 @@ CSS = """
         margin-top: .45rem;
         position: relative;
         z-index: 1;
+        text-align: center;
     }
 
     .family-insight-grid,
     .person-summary-grid {
         display: grid;
         gap: .9rem;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         margin: .75rem 0 1rem;
     }
 
@@ -1413,7 +1420,13 @@ CSS = """
 
     .movement-card {
         background: linear-gradient(135deg, rgba(255,255,255,.99), rgba(248,250,252,.98)) !important;
-        padding: .86rem .95rem;
+        padding: .92rem 1rem;
+        border-radius: 1.05rem !important;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .10) !important;
+    }
+
+    .movement-card .movement-top {
+        align-items: center;
     }
 
     .movement-top .income,
@@ -1589,6 +1602,20 @@ CSS = """
             max-width: 980px;
         }
     }
+
+    /* Premium polish */
+    .person-insight-grid .family-insight-card { text-align: center; min-height: 130px; display:flex; flex-direction:column; justify-content:center; }
+    .person-stat.person-income{background:linear-gradient(135deg,#ffffff,#ecfdf5)!important;border-color:rgba(5,150,105,.22)!important;}
+    .person-stat.person-expense{background:linear-gradient(135deg,#ffffff,#fff1f2)!important;border-color:rgba(220,38,38,.24)!important;}
+    .person-stat.person-balance{background:linear-gradient(135deg,#ffffff,#eff6ff,#ede9fe)!important;border-color:rgba(99,102,241,.22)!important;}
+    [data-testid="stMetric"]{text-align:center;padding:1rem 1.1rem!important;min-height:8.2rem;display:flex;flex-direction:column;justify-content:center;box-shadow:0 16px 34px rgba(15,23,42,.10)!important;}
+    [data-testid="stMetricLabel"] p{text-align:center!important;font-weight:900!important;letter-spacing:.04em;}
+    [data-testid="stMetricValue"]{text-align:center!important;font-size:2rem!important;}
+    .family-main-card{min-height:10.2rem;display:flex;flex-direction:column;justify-content:center;text-align:center;}
+    .family-insight-card{box-shadow:0 20px 45px rgba(15,23,42,.12)!important;}
+    .goal-card-rich{box-shadow:0 25px 55px rgba(15,23,42,.14)!important;border:1px solid rgba(37,99,235,.12)!important;}
+    .goal-progress-fill{box-shadow:0 0 0 1px rgba(255,255,255,.22),0 8px 20px rgba(15,23,42,.2);}
+
 </style>
 """
 
@@ -1676,6 +1703,8 @@ def movement_card(row: pd.Series) -> None:
     category_raw = str(row["category"])
     category_text = category_label(category_raw)
     category_tone = category_tone_class(category_raw)
+    icon_map = {"Comida": "🍽️", "Casa": "🏠", "Compras": "🛍️", "Contas": "🧾", "Transportes": "🚗", "Saúde": "💊", "Lazer": "🎯", "Outros": "✨", "Salário": "💼", "Subsídio Alimentação": "🥗"}
+    movement_icon = icon_map.get(category_text, "•")
     desc_text = f" · {escape(description)}" if description else ""
 
     st.markdown(
@@ -1685,7 +1714,7 @@ def movement_card(row: pd.Series) -> None:
                 <div>
                     <div class="movement-heading">
                         <span class="category-dot {category_tone}" aria-hidden="true"></span>
-                        <div class="movement-title">{escape(category_text)}</div>
+                        <div class="movement-title">{escape(movement_icon)} {escape(category_text)}</div>
                         <span class="movement-badge {badge_class}">{escape(str(row['type']))}</span>
                     </div>
                     <div class="movement-meta"><span class="movement-date">{escape(str(row['date']))}</span> · {escape(str(row['person']))}{desc_text}</div>
@@ -1782,3 +1811,4 @@ def transaction_label(row: pd.Series) -> str:
     extra = f" | {desc}" if desc else ""
 
     return f"{row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}{extra}"
+

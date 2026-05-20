@@ -491,24 +491,27 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
     page_df = filtered_df[filtered_df["person"] == page] if not filtered_df.empty else pd.DataFrame()
     pdata = person_financials(page_df) if not page_df.empty else {k:0.0 for k in ["salary_income","allowance_income","total_expense","total_balance","expense_salary","expense_card","salary_balance","card_balance"]}
 
-    c1,c2,c3,c4=st.columns(4)
-    c1.metric("Salário", money(pdata["salary_income"]))
     if page == "Gabi":
-        c2.metric("Subsídio alimentação", "Não aplicável")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Salário", money(pdata["salary_income"]))
+        c2.metric("Despesas", money(pdata["total_expense"]))
+        c3.metric("Saldo disponível", money(pdata["total_balance"]))
     else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Salário", money(pdata["salary_income"]))
         c2.metric("Subsídio alimentação", money(pdata["allowance_income"]))
-    c3.metric("Despesas", money(pdata["total_expense"]))
-    c4.metric("Saldo disponível", money(pdata["total_balance"]))
+        c3.metric("Despesas", money(pdata["total_expense"]))
+        c4.metric("Saldo disponível", money(pdata["total_balance"]))
 
-    extra_card = "" if page == "Gabi" else f"<div class='family-insight-card'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>"
-    food_card = "" if page == "Gabi" else f"<div class='family-insight-card'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>"
-    st.markdown(f"""<div class='family-insight-grid'>
-    <div class='family-insight-card'><div class='family-label'>Salário recebido</div><div class='family-insight-title'>{money(pdata['salary_income'])}</div></div>
+    extra_card = "" if page == "Gabi" else f"<div class='family-insight-card person-stat person-income'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>"
+    food_card = "" if page == "Gabi" else f"<div class='family-insight-card person-stat person-expense'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>"
+    st.markdown(f"""<div class='family-insight-grid person-insight-grid'>
+    <div class='family-insight-card person-stat person-income'><div class='family-label'>Salário recebido</div><div class='family-insight-title'>{money(pdata['salary_income'])}</div></div>
     {extra_card}
-    <div class='family-insight-card'><div class='family-label'>Pago com salário</div><div class='family-insight-value expense'>-{money(pdata['expense_salary'])}</div></div>
+    <div class='family-insight-card person-stat person-expense'><div class='family-label'>Pago com salário</div><div class='family-insight-value expense'>-{money(pdata['expense_salary'])}</div></div>
     {food_card}
-    <div class='family-insight-card'><div class='family-label'>Saldo salário</div><div class='family-insight-title'>{money(pdata['salary_balance'])}</div></div>
-    {"<div class='family-insight-card'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>" + money(pdata['card_balance']) + "</div></div>" if page != "Gabi" else ""}
+    <div class='family-insight-card person-stat person-balance'><div class='family-label'>Saldo salário</div><div class='family-insight-title'>{money(pdata['salary_balance'])}</div></div>
+    {"<div class='family-insight-card person-stat person-balance'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>" + money(pdata['card_balance']) + "</div></div>" if page != "Gabi" else ""}
     </div>""", unsafe_allow_html=True)
 
     form_col, list_col = st.columns([1, 1.2])
