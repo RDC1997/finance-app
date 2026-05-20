@@ -370,26 +370,48 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
     _, _, prev_balance = financial_summary(prev_month_df)
     delta_balance = current_balance - prev_balance
     motiv = "Excelente foco financeiro 💚" if balance >= 0 else "Hora de ajustar com calma ❤️"
+    trend_text = "acima" if delta_balance >= 0 else "abaixo"
+    hero_message = (
+        "Vocês estão a construir uma margem de segurança fantástica."
+        if balance > 0
+        else "Ainda vão a tempo de fechar o mês no verde com pequenos ajustes."
+    )
+    savings_value = max(balance, 0.0)
+    monthly_state = (
+        "Mês positivo: continuam consistentes e disciplinados."
+        if balance >= 0 and delta_balance >= 0
+        else "Alerta: as despesas estão a acelerar, convém ajustar nas próximas semanas."
+        if balance < 0
+        else "Boa recuperação: ainda há espaço para terminar melhor do que o mês anterior."
+    )
+    days_left = max(((date.today().replace(day=28) + timedelta(days=4)).replace(day=1) - date.today()).days, 1)
+    projection = balance + (balance / max(date.today().day, 1)) * days_left
+    projection_signal = "+" if projection >= 0 else ""
+    health_score = int(max(0, min(100, 70 + (18 if balance > 0 else -12) + (8 if delta_balance >= 0 else -8))))
     st.markdown(
         f"""
         <div class="family-dashboard-grid premium-dashboard">
             <div class="family-main-card balance-card">
-                <div class="family-label">Saldo disponível</div>
+                <div class="family-label">Saldo atual do casal</div>
                 <div class="family-balance {balance_class_name(balance)}">{money(balance)}</div>
-                <div class="family-note">Salários menos despesas no período selecionado.</div>
+                <div class="family-note">{hero_message}</div>
             </div>
             <div class="family-main-card income-card">
-                <div class="family-label">Salário total</div>
+                <div class="family-label">Entradas</div>
                 <div class="family-value income">{money(income)}</div>
             </div>
             <div class="family-main-card expense-card">
-                <div class="family-label">Despesas totais</div>
+                <div class="family-label">Despesas</div>
                 <div class="family-value expense">{money(expense)}</div>
+            </div>
+            <div class="family-main-card savings-card">
+                <div class="family-label">Poupança</div>
+                <div class="family-value neutral">{money(savings_value)}</div>
             </div>
         </div>
         <div class="family-insight-card">
-            <div class="family-label">Resumo rápido do mês</div>
-            <div class="family-insight-title">Comparação com mês anterior: {money(delta_balance)}</div>
+            <div class="family-label">Comparação mensal</div>
+            <div class="family-insight-title">Este mês está {trend_text} do anterior em {money(abs(delta_balance))}</div>
             <div class="family-note">{motiv}</div>
         </div>
         """,
@@ -426,16 +448,6 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
         unsafe_allow_html=True,
     )
 
-    section_title("Comparação Ruben vs Gabi")
-    cols = st.columns(2)
-    for idx, person in enumerate(PEOPLE):
-        pdata = person_financials(filtered_df[filtered_df["person"] == person])
-        with cols[idx]:
-            st.markdown(f"**{person}**")
-            st.metric("Entradas", money(pdata["salary_income"] + pdata["allowance_income"]))
-            st.metric("Despesas", money(pdata["total_expense"]))
-            st.metric("Saldo", money(pdata["total_balance"]))
-
     if not goals_df.empty:
         total_target = float(goals_df["target_amount"].sum())
         total_current = float(goals_df["current_amount"].sum())
@@ -453,6 +465,25 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
             """,
             unsafe_allow_html=True,
         )
+    st.markdown(
+        f"""
+        <div class="family-insight-grid">
+            <div class="family-insight-card">
+                <div class="family-label">Estado do mês</div>
+                <div class="family-insight-title">{escape(monthly_state)}</div>
+            </div>
+            <div class="family-insight-card">
+                <div class="family-label">Previsão de fim do mês</div>
+                <div class="family-insight-title">Ao ritmo atual irão terminar o mês com {projection_signal}{money(projection)}</div>
+            </div>
+            <div class="family-insight-card">
+                <div class="family-label">Score financeiro</div>
+                <div class="family-insight-title">Saúde Financeira: {health_score}/100</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
@@ -462,17 +493,22 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
 
     c1,c2,c3,c4=st.columns(4)
     c1.metric("Salário", money(pdata["salary_income"]))
-    c2.metric("Subsídio alimentação", money(pdata["allowance_income"]))
+    if page == "Gabi":
+        c2.metric("Subsídio alimentação", "Não aplicável")
+    else:
+        c2.metric("Subsídio alimentação", money(pdata["allowance_income"]))
     c3.metric("Despesas", money(pdata["total_expense"]))
     c4.metric("Saldo disponível", money(pdata["total_balance"]))
 
+    extra_card = "" if page == "Gabi" else f"<div class='family-insight-card'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>"
+    food_card = "" if page == "Gabi" else f"<div class='family-insight-card'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>"
     st.markdown(f"""<div class='family-insight-grid'>
     <div class='family-insight-card'><div class='family-label'>Salário recebido</div><div class='family-insight-title'>{money(pdata['salary_income'])}</div></div>
-    <div class='family-insight-card'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>
+    {extra_card}
     <div class='family-insight-card'><div class='family-label'>Pago com salário</div><div class='family-insight-value expense'>-{money(pdata['expense_salary'])}</div></div>
-    <div class='family-insight-card'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>
+    {food_card}
     <div class='family-insight-card'><div class='family-label'>Saldo salário</div><div class='family-insight-title'>{money(pdata['salary_balance'])}</div></div>
-    <div class='family-insight-card'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>{money(pdata['card_balance'])}</div></div>
+    {"<div class='family-insight-card'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>" + money(pdata['card_balance']) + "</div></div>" if page != "Gabi" else ""}
     </div>""", unsafe_allow_html=True)
 
     form_col, list_col = st.columns([1, 1.2])
@@ -673,6 +709,24 @@ def render_categories(categories_df: pd.DataFrame) -> None:
     if categories_df.empty:
         st.info("Ainda não existem categorias.")
         return
+    section_title("Categorias ativas")
+    chip_cols = st.columns(3)
+    for idx, (_, row) in enumerate(categories_df.iterrows()):
+        cname = str(row["name"])
+        tone = category_tone_class(cname)
+        with chip_cols[idx % 3]:
+            st.markdown(
+                f"""<div class="category-grid-card category-grid-card-modern">
+                    <div class="category-card-main">
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <span class="category-dot category-dot-large {tone}"></span>
+                            <span class="category-name">{escape(cname)}</span>
+                        </div>
+                        {"<span class='category-protected-badge'>Protegida</span>" if cname.lower() in protected_categories else ""}
+                    </div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
 
     removable_df = categories_df[~categories_df["name"].str.lower().isin(protected_categories)]
     if removable_df.empty:

@@ -326,6 +326,7 @@ CSS = """
         margin-top: .42rem;
         position: relative;
         z-index: 1;
+        font-variant-numeric: tabular-nums;
     }
 
     .clean-box {
@@ -524,6 +525,7 @@ CSS = """
         font-size: 1.05rem;
         font-weight: 900;
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
     .income { color: var(--green) !important; }
@@ -1246,7 +1248,7 @@ CSS = """
     .family-dashboard-grid {
         display: grid;
         gap: 1rem;
-        grid-template-columns: 1.35fr 1fr 1fr;
+        grid-template-columns: 1.35fr 1fr 1fr 1fr;
         margin: .25rem 0 1rem;
     }
 
@@ -1300,6 +1302,10 @@ CSS = """
         background: linear-gradient(135deg, #ffffff 0%, #fff7ed 55%, #fee2e2 100%) !important;
         border-color: rgba(220,38,38,.18) !important;
     }
+    .savings-card {
+        background: linear-gradient(135deg, #ffffff 0%, #eff6ff 45%, #ede9fe 100%) !important;
+        border-color: rgba(99,102,241,.18) !important;
+    }
 
     .income-card::after { background: rgba(16,185,129,.12); }
     .expense-card::after { background: rgba(239,68,68,.12); }
@@ -1328,6 +1334,7 @@ CSS = """
         margin-top: .65rem;
         position: relative;
         z-index: 1;
+        font-variant-numeric: tabular-nums;
     }
 
     .family-note {
