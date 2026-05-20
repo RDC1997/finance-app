@@ -1611,9 +1611,27 @@ CSS = """
     [data-testid="stMetric"]{text-align:center;padding:1rem 1.1rem!important;min-height:8.2rem;display:flex;flex-direction:column;justify-content:center;box-shadow:0 16px 34px rgba(15,23,42,.10)!important;}
     [data-testid="stMetricLabel"] p{text-align:center!important;font-weight:900!important;letter-spacing:.04em;}
     [data-testid="stMetricValue"]{text-align:center!important;font-size:2rem!important;}
-    .family-main-card{min-height:10.2rem;display:flex;flex-direction:column;justify-content:center;text-align:center;}
-    .family-insight-card{box-shadow:0 20px 45px rgba(15,23,42,.12)!important;}
-    .goal-card-rich{box-shadow:0 25px 55px rgba(15,23,42,.14)!important;border:1px solid rgba(37,99,235,.12)!important;}
+    .family-main-card{min-height:10.2rem;display:flex;flex-direction:column;justify-content:center;text-align:center;border:1px solid rgba(148,163,184,.28)!important;box-shadow:0 22px 52px rgba(15,23,42,.16)!important;}
+    .family-main-card .family-value,.family-main-card .family-balance{text-align:center;font-size:2rem!important;}
+    .family-main-card.income-card{background:linear-gradient(145deg,#f0fdf4,#dcfce7)!important;}
+    .family-main-card.expense-card{background:linear-gradient(145deg,#fff1f2,#ffe4e6)!important;}
+    .family-main-card.available-card{background:linear-gradient(145deg,#eef2ff,#ede9fe)!important;}
+    .family-main-card.mint-card{background:linear-gradient(145deg,#ecfeff,#ccfbf1)!important;}
+    .family-main-card.balance-card{background:linear-gradient(140deg,#4f46e5,#7c3aed 45%,#2563eb)!important;color:#fff!important;box-shadow:0 28px 65px rgba(79,70,229,.38)!important;}
+    .family-main-card.balance-card .family-label,.family-main-card.balance-card .family-note,.family-main-card.balance-card .family-balance{color:#fff!important;text-align:center!important;}
+    .family-insight-card{box-shadow:0 20px 45px rgba(15,23,42,.12)!important;text-align:center;}
+    .family-label,.family-insight-title,.family-note{text-align:center!important;}
+    .family-goals-title{text-align:center;font-size:1.45rem;font-weight:900;margin:1.25rem 0 .8rem;}
+    .family-goal-item{background:rgba(255,255,255,.95);border:1px solid rgba(148,163,184,.28);border-radius:1rem;padding:.8rem 1rem;margin-bottom:.6rem;box-shadow:0 12px 24px rgba(15,23,42,.08);}
+    .family-goal-top{display:flex;justify-content:space-between;align-items:center;gap:.6rem;}
+    .family-goal-name{font-weight:800;}
+    .family-goal-percent{font-weight:900;color:#7c3aed;}
+    .family-goal-values{text-align:center;color:#475569;font-size:.9rem;margin:.35rem 0;}
+    .family-goal-track{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;}
+    .family-goal-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#8b5cf6,#2563eb);}
+    .goal-card-rich{box-shadow:0 25px 55px rgba(15,23,42,.14)!important;border:1px solid rgba(37,99,235,.12)!important;background:linear-gradient(160deg,#ffffff,#eef2ff,#f5f3ff)!important;}
+    .goal-title,.goal-percent-center,.goal-bottom-row{text-align:center!important;}
+    .goal-percent-center{font-size:2.4rem!important;font-weight:900;color:#6d28d9;}
     .goal-progress-fill{box-shadow:0 0 0 1px rgba(255,255,255,.22),0 8px 20px rgba(15,23,42,.2);}
 
 </style>
@@ -1811,4 +1829,3 @@ def transaction_label(row: pd.Series) -> str:
     extra = f" | {desc}" if desc else ""
 
     return f"{row['date']} | {row['person']} | {row['type']} | {row['category']} | {money(row['value'])}{extra}"
-
