@@ -376,7 +376,7 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
         if balance > 0
         else "Ainda vão a tempo de fechar o mês no verde com pequenos ajustes."
     )
-    savings_value = max(balance, 0.0)
+    available_to_spend = balance
     monthly_state = (
         "Mês positivo: continuam consistentes e disciplinados."
         if balance >= 0 and delta_balance >= 0
@@ -404,9 +404,9 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
                 <div class="family-label">Despesas</div>
                 <div class="family-value expense">{money(expense)}</div>
             </div>
-            <div class="family-main-card savings-card">
-                <div class="family-label">Poupança</div>
-                <div class="family-value neutral">{money(savings_value)}</div>
+            <div class="family-main-card available-card">
+                <div class="family-label">Disponível para gastar</div>
+                <div class="family-value {balance_class_name(available_to_spend)}">{money(available_to_spend)}</div>
             </div>
         </div>
         <div class="family-insight-card">
@@ -449,22 +449,25 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
     )
 
     if not goals_df.empty:
-        total_target = float(goals_df["target_amount"].sum())
-        total_current = float(goals_df["current_amount"].sum())
-        progress = min(total_current / total_target, 1) if total_target > 0 else 0
-        progress_percent = int(round(progress * 100))
-        st.markdown(
-            f"""
-            <div class="family-goals-strip">
-                <div>
-                    <div class="family-label">Metas da família</div>
-                    <div class="family-insight-title">{len(goals_df)} metas ativas · {progress_percent}% no total</div>
+        st.markdown('<div class="family-goals-title">Metas da família</div>', unsafe_allow_html=True)
+        for _, goal in goals_df.iterrows():
+            target_value = float(goal["target_amount"])
+            current_value = float(goal["current_amount"])
+            progress = min(current_value / target_value, 1) if target_value > 0 else 0
+            progress_percent = int(round(progress * 100))
+            st.markdown(
+                f"""
+                <div class="family-goal-item">
+                    <div class="family-goal-top">
+                        <div class="family-goal-name">{escape(str(goal['name']))}</div>
+                        <div class="family-goal-percent">{progress_percent}%</div>
+                    </div>
+                    <div class="family-goal-values">{money(current_value)} / {money(target_value)}</div>
+                    <div class="family-goal-track"><span style="width:{progress_percent}%;"></span></div>
                 </div>
-                <div class="family-goals-amount">{money(total_current)} / {money(total_target)}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
     st.markdown(
         f"""
         <div class="family-insight-grid">
@@ -492,27 +495,28 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
     pdata = person_financials(page_df) if not page_df.empty else {k:0.0 for k in ["salary_income","allowance_income","total_expense","total_balance","expense_salary","expense_card","salary_balance","card_balance"]}
 
     if page == "Gabi":
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Salário", money(pdata["salary_income"]))
-        c2.metric("Despesas", money(pdata["total_expense"]))
-        c3.metric("Saldo disponível", money(pdata["total_balance"]))
+        st.markdown(
+            f"""
+            <div class="family-dashboard-grid person-main-grid">
+                <div class="family-main-card income-card"><div class="family-label">Salário</div><div class="family-value income">{money(pdata["salary_income"])}</div></div>
+                <div class="family-main-card expense-card"><div class="family-label">Despesas</div><div class="family-value expense">{money(pdata["total_expense"])}</div></div>
+                <div class="family-main-card available-card"><div class="family-label">Saldo disponível</div><div class="family-value {balance_class_name(pdata["total_balance"])}">{money(pdata["total_balance"])}</div></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Salário", money(pdata["salary_income"]))
-        c2.metric("Subsídio alimentação", money(pdata["allowance_income"]))
-        c3.metric("Despesas", money(pdata["total_expense"]))
-        c4.metric("Saldo disponível", money(pdata["total_balance"]))
-
-    extra_card = "" if page == "Gabi" else f"<div class='family-insight-card person-stat person-income'><div class='family-label'>Subsídio alimentação recebido</div><div class='family-insight-title'>{money(pdata['allowance_income'])}</div></div>"
-    food_card = "" if page == "Gabi" else f"<div class='family-insight-card person-stat person-expense'><div class='family-label'>Pago com cartão alimentação</div><div class='family-insight-value expense'>-{money(pdata['expense_card'])}</div></div>"
-    st.markdown(f"""<div class='family-insight-grid person-insight-grid'>
-    <div class='family-insight-card person-stat person-income'><div class='family-label'>Salário recebido</div><div class='family-insight-title'>{money(pdata['salary_income'])}</div></div>
-    {extra_card}
-    <div class='family-insight-card person-stat person-expense'><div class='family-label'>Pago com salário</div><div class='family-insight-value expense'>-{money(pdata['expense_salary'])}</div></div>
-    {food_card}
-    <div class='family-insight-card person-stat person-balance'><div class='family-label'>Saldo salário</div><div class='family-insight-title'>{money(pdata['salary_balance'])}</div></div>
-    {"<div class='family-insight-card person-stat person-balance'><div class='family-label'>Saldo cartão alimentação</div><div class='family-insight-title'>" + money(pdata['card_balance']) + "</div></div>" if page != "Gabi" else ""}
-    </div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="family-dashboard-grid person-main-grid">
+                <div class="family-main-card income-card"><div class="family-label">Salário</div><div class="family-value income">{money(pdata["salary_income"])}</div></div>
+                <div class="family-main-card mint-card"><div class="family-label">Subsídio alimentação</div><div class="family-value income">{money(pdata["allowance_income"])}</div></div>
+                <div class="family-main-card expense-card"><div class="family-label">Despesas</div><div class="family-value expense">{money(pdata["total_expense"])}</div></div>
+                <div class="family-main-card available-card"><div class="family-label">Saldo disponível</div><div class="family-value {balance_class_name(pdata["total_balance"])}">{money(pdata["total_balance"])}</div></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     form_col, list_col = st.columns([1, 1.2])
     with form_col:
@@ -691,7 +695,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
 def render_categories(categories_df: pd.DataFrame) -> None:
     page_title("Categorias", "Organizar despesas sem complicar.")
 
-    protected_categories = {"outros", "comida", "alimentação", "alimentacao"}
+    protected_categories = {"outros"}
     with st.container():
         section_title("Adicionar categoria")
         new_category = st.text_input("Nova categoria")
@@ -707,40 +711,33 @@ def render_categories(categories_df: pd.DataFrame) -> None:
                 except Exception:
                     st.error("Essa categoria já existe.")
 
-    section_title("Remover categoria")
-
     if categories_df.empty:
         st.info("Ainda não existem categorias.")
         return
-    section_title("Categorias ativas")
-    chip_cols = st.columns(3)
-    for idx, (_, row) in enumerate(categories_df.iterrows()):
-        cname = str(row["name"])
-        tone = category_tone_class(cname)
-        with chip_cols[idx % 3]:
-            st.markdown(
-                f"""<div class="category-grid-card category-grid-card-modern">
-                    <div class="category-card-main">
-                        <div style="display:flex;align-items:center;gap:.5rem;">
-                            <span class="category-dot category-dot-large {tone}"></span>
-                            <span class="category-name">{escape(cname)}</span>
-                        </div>
-                        {"<span class='category-protected-badge'>Protegida</span>" if cname.lower() in protected_categories else ""}
-                    </div>
-                </div>""",
-                unsafe_allow_html=True,
-            )
+    with st.expander("Gerir categorias", expanded=True):
+        options = {row["name"]: int(row["id"]) for _, row in categories_df.iterrows()}
+        selected = st.radio("Selecionar categoria", list(options.keys()), horizontal=True)
+        selected_key = selected.strip().lower()
 
-    removable_df = categories_df[~categories_df["name"].str.lower().isin(protected_categories)]
-    if removable_df.empty:
-        st.info("Não existem categorias removíveis neste momento.")
-        return
-    options = {row["name"]: int(row["id"]) for _, row in removable_df.iterrows()}
-    selected = st.selectbox("Seleciona categoria removível", list(options.keys()))
-    if st.button("Remover categoria", use_container_width=True):
-        execute_write("DELETE FROM categories WHERE id = :id", {"id": options[selected]})
-        st.success("Categoria removida.")
-        st.rerun()
+        if selected_key == "outros":
+            st.info("A categoria 'Outros' é protegida e não pode ser renomeada nem removida.")
+            return
+
+        rename_col, delete_col = st.columns(2)
+        with rename_col:
+            new_name = st.text_input("Novo nome", key=f"rename_{options[selected]}")
+            if st.button("Renomear", key=f"rename_btn_{options[selected]}", use_container_width=True):
+                if not new_name.strip():
+                    st.error("Escreve um novo nome para a categoria.")
+                else:
+                    execute_write("UPDATE categories SET name = :name WHERE id = :id", {"name": new_name.strip(), "id": options[selected]})
+                    st.success("Categoria renomeada.")
+                    st.rerun()
+        with delete_col:
+            if st.button("Eliminar", key=f"delete_{options[selected]}", use_container_width=True):
+                execute_write("DELETE FROM categories WHERE id = :id", {"id": options[selected]})
+                st.success("Categoria removida.")
+                st.rerun()
 
 def render_export(transactions_df: pd.DataFrame) -> None:
     page_title("Exportar", "Escolher um mês e descarregar em Excel.")
