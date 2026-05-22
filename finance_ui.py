@@ -39,7 +39,7 @@ CSS = """
 <style>
     :root {
         color-scheme: light;
-        --bg: #f6f7fb;
+        --bg: #f3f5f9;
         --bg-2: #eef2f7;
         --surface: #ffffff;
         --surface-soft: #f8fafc;
@@ -48,9 +48,9 @@ CSS = """
         --muted: #64748b;
         --line: #d8e0eb;
         --line-strong: #cbd5e1;
-        --accent: #ef4444;
-        --accent-soft: #fee2e2;
-        --accent-muted: #fff1f2;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --accent-muted: #ecfeff;
         --green: #059669;
         --green-deep: #047857;
         --red: #dc2626;
@@ -1179,12 +1179,12 @@ CSS = """
 
     .category-tone-income { background: linear-gradient(135deg, #34d399, #059669) !important; }
     .category-tone-home { background: linear-gradient(135deg, #60a5fa, #2563eb) !important; }
-    .category-tone-shopping { background: linear-gradient(135deg, #a78bfa, #7c3aed) !important; }
+    .category-tone-shopping { background: linear-gradient(135deg, #2dd4bf, #0f766e) !important; }
     .category-tone-food { background: linear-gradient(135deg, #fb923c, #ea580c) !important; }
     .category-tone-bills { background: linear-gradient(135deg, #facc15, #d97706) !important; }
     .category-tone-transport { background: linear-gradient(135deg, #38bdf8, #0284c7) !important; }
-    .category-tone-health { background: linear-gradient(135deg, #f472b6, #db2777) !important; }
-    .category-tone-leisure { background: linear-gradient(135deg, #818cf8, #4f46e5) !important; }
+    .category-tone-health { background: linear-gradient(135deg, #fb7185, #ef4444) !important; }
+    .category-tone-leisure { background: linear-gradient(135deg, #0891b2, #1d4ed8) !important; }
     .category-tone-other { background: linear-gradient(135deg, #94a3b8, #475569) !important; }
 
     .category-dot {
@@ -1307,8 +1307,8 @@ CSS = """
         border-color: rgba(220,38,38,.18) !important;
     }
     .savings-card {
-        background: linear-gradient(135deg, #ffffff 0%, #eff6ff 45%, #ede9fe 100%) !important;
-        border-color: rgba(99,102,241,.18) !important;
+        background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 45%, #ccfbf1 100%) !important;
+        border-color: rgba(14,116,144,.18) !important;
     }
 
     .income-card::after { background: rgba(16,185,129,.12); }
@@ -1607,7 +1607,7 @@ CSS = """
     .person-insight-grid .family-insight-card { text-align: center; min-height: 130px; display:flex; flex-direction:column; justify-content:center; }
     .person-stat.person-income{background:linear-gradient(135deg,#ffffff,#ecfdf5)!important;border-color:rgba(5,150,105,.22)!important;}
     .person-stat.person-expense{background:linear-gradient(135deg,#ffffff,#fff1f2)!important;border-color:rgba(220,38,38,.24)!important;}
-    .person-stat.person-balance{background:linear-gradient(135deg,#ffffff,#eff6ff,#ede9fe)!important;border-color:rgba(99,102,241,.22)!important;}
+    .person-stat.person-balance{background:linear-gradient(135deg,#ffffff,#e0f2fe,#ccfbf1)!important;border-color:rgba(14,116,144,.22)!important;}
     [data-testid="stMetric"]{text-align:center;padding:1rem 1.1rem!important;min-height:8.2rem;display:flex;flex-direction:column;justify-content:center;box-shadow:0 16px 34px rgba(15,23,42,.10)!important;}
     [data-testid="stMetricLabel"] p{text-align:center!important;font-weight:900!important;letter-spacing:.04em;}
     [data-testid="stMetricValue"]{text-align:center!important;font-size:2rem!important;}
@@ -1615,9 +1615,9 @@ CSS = """
     .family-main-card .family-value,.family-main-card .family-balance{text-align:center;font-size:2rem!important;}
     .family-main-card.income-card{background:linear-gradient(145deg,#f0fdf4,#dcfce7)!important;}
     .family-main-card.expense-card{background:linear-gradient(145deg,#fff1f2,#ffe4e6)!important;}
-    .family-main-card.available-card{background:linear-gradient(145deg,#eef2ff,#ede9fe)!important;}
+    .family-main-card.available-card{background:linear-gradient(145deg,#e0f2fe,#ccfbf1)!important;}
     .family-main-card.mint-card{background:linear-gradient(145deg,#ecfeff,#ccfbf1)!important;}
-    .family-main-card.balance-card{background:linear-gradient(140deg,#4f46e5,#7c3aed 45%,#2563eb)!important;color:#fff!important;box-shadow:0 28px 65px rgba(79,70,229,.38)!important;}
+    .family-main-card.balance-card{background:linear-gradient(140deg,#0f766e,#0f766e 45%,#1d4ed8)!important;color:#fff!important;box-shadow:0 28px 65px rgba(15,118,110,.32)!important;}
     .family-main-card.balance-card .family-label,.family-main-card.balance-card .family-note,.family-main-card.balance-card .family-balance{color:#fff!important;text-align:center!important;}
     .family-insight-card{box-shadow:0 20px 45px rgba(15,23,42,.12)!important;text-align:center;}
     .family-label,.family-insight-title,.family-note{text-align:center!important;}
@@ -1625,13 +1625,13 @@ CSS = """
     .family-goal-item{background:rgba(255,255,255,.95);border:1px solid rgba(148,163,184,.28);border-radius:1rem;padding:.8rem 1rem;margin-bottom:.6rem;box-shadow:0 12px 24px rgba(15,23,42,.08);}
     .family-goal-top{display:flex;justify-content:space-between;align-items:center;gap:.6rem;}
     .family-goal-name{font-weight:800;}
-    .family-goal-percent{font-weight:900;color:#7c3aed;}
+    .family-goal-percent{font-weight:900;color:#0f766e;}
     .family-goal-values{text-align:center;color:#475569;font-size:.9rem;margin:.35rem 0;}
     .family-goal-track{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;}
-    .family-goal-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#8b5cf6,#2563eb);}
-    .goal-card-rich{box-shadow:0 25px 55px rgba(15,23,42,.14)!important;border:1px solid rgba(37,99,235,.12)!important;background:linear-gradient(160deg,#ffffff,#eef2ff,#f5f3ff)!important;}
+    .family-goal-track span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#10b981,#1d4ed8);}
+    .goal-card-rich{box-shadow:0 25px 55px rgba(15,23,42,.14)!important;border:1px solid rgba(15,118,110,.16)!important;background:linear-gradient(160deg,#ffffff,#ecfeff,#e0f2fe)!important;}
     .goal-title,.goal-percent-center,.goal-bottom-row{text-align:center!important;}
-    .goal-percent-center{font-size:2.4rem!important;font-weight:900;color:#6d28d9;}
+    .goal-percent-center{font-size:2.4rem!important;font-weight:900;color:#0f766e;}
     .goal-progress-fill{box-shadow:0 0 0 1px rgba(255,255,255,.22),0 8px 20px rgba(15,23,42,.2);}
 
 </style>
@@ -1715,7 +1715,6 @@ def movement_card(row: pd.Series) -> None:
     is_income = str(row["type"]).lower() == "salário"
     value_class = "income" if is_income else "expense"
     movement_class = "income-movement" if is_income else "expense-movement"
-    badge_class = "income-badge" if is_income else "expense-badge"
     signal = "+" if is_income else "-"
     description = str(row.get("description") or "").strip()
     category_raw = str(row["category"])
@@ -1723,6 +1722,7 @@ def movement_card(row: pd.Series) -> None:
     category_tone = category_tone_class(category_raw)
     icon_map = {"Comida": "🍽️", "Casa": "🏠", "Compras": "🛍️", "Contas": "🧾", "Transportes": "🚗", "Saúde": "💊", "Lazer": "🎯", "Outros": "✨", "Salário": "💼", "Subsídio Alimentação": "🥗"}
     movement_icon = icon_map.get(category_text, "•")
+    movement_type = "Entrada" if is_income else "Despesa"
     desc_text = f" · {escape(description)}" if description else ""
 
     st.markdown(
@@ -1732,8 +1732,8 @@ def movement_card(row: pd.Series) -> None:
                 <div>
                     <div class="movement-heading">
                         <span class="category-dot {category_tone}" aria-hidden="true"></span>
-                        <div class="movement-title">{escape(movement_icon)} {escape(category_text)}</div>
-                        <span class="movement-badge {badge_class}">{escape(str(row['type']))}</span>
+                        <div class="movement-title">{escape(movement_icon)} {escape(category_text)} · <span class="small-muted">{escape(movement_type)}</span></div>
+                        
                     </div>
                     <div class="movement-meta"><span class="movement-date">{escape(str(row['date']))}</span> · {escape(str(row['person']))}{desc_text}</div>
                 </div>
