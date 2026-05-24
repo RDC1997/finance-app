@@ -344,109 +344,83 @@ def person_financials(person_df: pd.DataFrame) -> dict:
     }
 
 def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
-    page_title("Casal", "A vossa visão familiar do mês, clara e tranquila.")
-    income, expense, balance = financial_summary(filtered_df)
+    page_title("Casal", "Centro financeiro premium do casal: claro, inteligente e focado.")
 
     if filtered_df.empty:
-        summary_cards(filtered_df, "Saldo disponível")
         st.info("Não existem movimentos para os filtros escolhidos.")
         return
 
+    income, expense, balance = financial_summary(filtered_df)
     expense_df = filtered_df[filtered_df["type_normalized"] == "despesa"]
-    biggest_expense = expense_df.sort_values("value", ascending=False).head(1)
-    category_totals = expense_df.groupby("category")["value"].sum().sort_values(ascending=False) if not expense_df.empty else pd.Series(dtype=float)
-    top_category = str(category_totals.index[0]) if not category_totals.empty else "Sem despesas"
-    top_category_value = float(category_totals.iloc[0]) if not category_totals.empty else 0.0
+    savings_rate = (max(income - expense, 0) / income * 100) if income > 0 else 0.0
+    margin = income - expense
 
     month_start = pd.Timestamp.today().replace(day=1).date()
     last_month_end = month_start - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
-    current_month_df = filtered_df[pd.to_datetime(filtered_df["date"], errors="coerce").dt.date >= month_start]
-    prev_month_df = filtered_df[
-        (pd.to_datetime(filtered_df["date"], errors="coerce").dt.date >= last_month_start)
-        & (pd.to_datetime(filtered_df["date"], errors="coerce").dt.date <= last_month_end)
-    ]
-    _, _, current_balance = financial_summary(current_month_df)
+    dseries = pd.to_datetime(filtered_df["date"], errors="coerce").dt.date
+    current_month_df = filtered_df[dseries >= month_start]
+    prev_month_df = filtered_df[(dseries >= last_month_start) & (dseries <= last_month_end)]
+    cur_income, cur_expense, cur_balance = financial_summary(current_month_df)
     _, _, prev_balance = financial_summary(prev_month_df)
-    delta_balance = current_balance - prev_balance
-    motiv = "Excelente foco financeiro 💚" if balance >= 0 else "Hora de ajustar com calma ❤️"
-    trend_text = "acima" if delta_balance >= 0 else "abaixo"
-    hero_message = (
-        "Vocês estão a construir uma margem de segurança fantástica."
-        if balance > 0
-        else "Ainda vão a tempo de fechar o mês no verde com pequenos ajustes."
-    )
-    available_to_spend = balance
-    monthly_state = (
-        "Mês positivo: continuam consistentes e disciplinados."
-        if balance >= 0 and delta_balance >= 0
-        else "Alerta: as despesas estão a acelerar, convém ajustar nas próximas semanas."
-        if balance < 0
-        else "Boa recuperação: ainda há espaço para terminar melhor do que o mês anterior."
-    )
-    days_left = max(((date.today().replace(day=28) + timedelta(days=4)).replace(day=1) - date.today()).days, 1)
-    projection = balance + (balance / max(date.today().day, 1)) * days_left
-    projection_signal = "+" if projection >= 0 else ""
-    health_score = int(max(0, min(100, 70 + (18 if balance > 0 else -12) + (8 if delta_balance >= 0 else -8))))
-    st.markdown(
-        f"""
-        <div class="family-dashboard-grid premium-dashboard">
-            <div class="family-main-card balance-card">
-                <div class="family-label">Saldo atual do casal</div>
-                <div class="family-balance {balance_class_name(balance)}">{money(balance)}</div>
-                <div class="family-note">{hero_message}</div>
-            </div>
-            <div class="family-main-card income-card">
-                <div class="family-label">Entradas</div>
-                <div class="family-value income">{money(income)}</div>
-            </div>
-            <div class="family-main-card expense-card">
-                <div class="family-label">Despesas</div>
-                <div class="family-value expense">{money(expense)}</div>
-            </div>
-            <div class="family-main-card available-card">
-                <div class="family-label">Disponível para gastar</div>
-                <div class="family-value {balance_class_name(available_to_spend)}">{money(available_to_spend)}</div>
-            </div>
-        </div>
-        <div class="family-insight-card">
-            <div class="family-label">Comparação mensal</div>
-            <div class="family-insight-title">Este mês está {trend_text} do anterior em {money(abs(delta_balance))}</div>
-            <div class="family-note">{motiv}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
-    if biggest_expense.empty:
-        biggest_title = "Sem despesas"
-        biggest_meta = "Ainda não há despesas no período."
-        biggest_value = "0,00 €"
-    else:
-        biggest_row = biggest_expense.iloc[0]
-        biggest_title = category_label(str(biggest_row.get("category") or "Despesa"))
-        biggest_meta = f"{biggest_row['person']} · {biggest_row['date']}"
-        biggest_value = money(biggest_row["value"])
+    delta_balance = cur_balance - prev_balance
+    delta_pct = ((delta_balance / abs(prev_balance)) * 100) if prev_balance else (100.0 if cur_balance > 0 else 0.0)
+    trend = "↗" if delta_balance >= 0 else "↘"
 
-    st.markdown(
-        f"""
+    health_state = "healthy" if balance > 0 and savings_rate >= 15 else "warning" if balance >= 0 else "danger"
+    hero_context = {
+        "healthy": "Saúde financeira sólida: continuam consistentes e com controlo.",
+        "warning": "Atenção moderada: estão estáveis, mas convém reforçar a poupança.",
+        "danger": "Zona de correção: pequenos ajustes agora geram impacto imediato.",
+    }[health_state]
+
+    biggest_expense = expense_df.sort_values("value", ascending=False).head(1)
+    biggest_val = float(biggest_expense.iloc[0]["value"]) if not biggest_expense.empty else 0.0
+    biggest_pct = (biggest_val / expense * 100) if expense > 0 else 0.0
+    cat_totals = expense_df.groupby("category")["value"].sum().sort_values(ascending=False) if not expense_df.empty else pd.Series(dtype=float)
+    top_cat = str(cat_totals.index[0]) if not cat_totals.empty else "Sem despesas"
+    top_val = float(cat_totals.iloc[0]) if not cat_totals.empty else 0.0
+    top_pct = (top_val / expense * 100) if expense > 0 else 0.0
+
+    st.markdown(f"""
+        <div class="couple-hero hero-{health_state}">
+            <div class="family-label">Saldo atual do casal</div>
+            <div class="family-balance">{money(balance)}</div>
+            <div class="family-note">{hero_context}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+        <div class="family-dashboard-grid couple-secondary-grid">
+            <div class="family-main-card income-card"><div class="family-label">Entradas</div><div class="family-value income">{money(income)}</div></div>
+            <div class="family-main-card expense-card"><div class="family-label">Despesas</div><div class="family-value expense">{money(expense)}</div></div>
+            <div class="family-main-card savings-card"><div class="family-label">Taxa de poupança</div><div class="family-value neutral">{savings_rate:.1f}%</div></div>
+            <div class="family-main-card mint-card"><div class="family-label">Margem financeira</div><div class="family-value {balance_class_name(margin)}">{money(margin)}</div></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    biggest_title = category_label(str(biggest_expense.iloc[0].get("category") or "Despesa")) if not biggest_expense.empty else "Sem despesas"
+    biggest_meta = f"{biggest_expense.iloc[0]['person']} · {biggest_expense.iloc[0]['date']}" if not biggest_expense.empty else "Ainda não há despesas no período."
+
+    st.markdown(f"""
         <div class="family-insight-grid">
             <div class="family-insight-card">
                 <div class="family-label">Maior despesa</div>
-                <div class="family-insight-title">{escape(biggest_title)}</div>
-                <div class="family-insight-value expense">-{biggest_value}</div>
+                <div class="family-insight-title">💸 {escape(biggest_title)}</div>
+                <div class="family-insight-value expense">-{money(biggest_val)} · {biggest_pct:.1f}%</div>
+                <div class="metric-track"><span style="width:{max(2,min(100,biggest_pct)) if biggest_pct else 0}%;"></span></div>
                 <div class="family-note">{escape(biggest_meta)}</div>
             </div>
             <div class="family-insight-card">
                 <div class="family-label">Categoria com mais gastos</div>
-                <div class="family-insight-title">{escape(category_label(top_category))}</div>
-                <div class="family-insight-value expense">-{money(top_category_value)}</div>
-                <div class="family-note">Ajuda a perceber onde ajustar com calma.</div>
+                <div class="family-insight-title">📊 {escape(category_label(top_cat))}</div>
+                <div class="family-insight-value expense">-{money(top_val)} · {top_pct:.1f}%</div>
+                <div class="metric-track"><span style="width:{max(2,min(100,top_pct)) if top_pct else 0}%;"></span></div>
+                <div class="family-note">Foco ideal para otimizar o próximo mês.</div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     if not goals_df.empty:
         st.markdown('<div class="family-goals-title">Metas da família</div>', unsafe_allow_html=True)
@@ -455,38 +429,27 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
             current_value = float(goal["current_amount"])
             progress = min(current_value / target_value, 1) if target_value > 0 else 0
             progress_percent = int(round(progress * 100))
-            st.markdown(
-                f"""
+            missing = max(target_value - current_value, 0)
+            monthly_push = max((income - expense) * 0.25, 1)
+            months_left = int((missing / monthly_push) + 0.999) if missing > 0 else 0
+            eta_text = "Concluída" if missing <= 0 else f"Previsão: ~{months_left} mês(es)"
+            st.markdown(f"""
                 <div class="family-goal-item">
-                    <div class="family-goal-top">
-                        <div class="family-goal-name">{escape(str(goal['name']))}</div>
-                        <div class="family-goal-percent">{progress_percent}%</div>
-                    </div>
-                    <div class="family-goal-values">{money(current_value)} / {money(target_value)}</div>
+                    <div class="family-goal-top"><div class="family-goal-name">{escape(str(goal['name']))}</div><div class="family-goal-percent">{progress_percent}%</div></div>
+                    <div class="family-goal-values">{money(current_value)} / {money(target_value)} · {eta_text}</div>
                     <div class="family-goal-track"><span style="width:{progress_percent}%;"></span></div>
+                    <div class="family-note">{escape(goal_message(progress_percent))}</div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-    st.markdown(
-        f"""
+            """, unsafe_allow_html=True)
+
+    month_story = "Mês equilibrado e com boa disciplina." if cur_balance >= 0 else "Mês sob pressão — priorizar cortes estratégicos ajuda já."
+    st.markdown(f"""
         <div class="family-insight-grid">
-            <div class="family-insight-card">
-                <div class="family-label">Estado do mês</div>
-                <div class="family-insight-title">{escape(monthly_state)}</div>
-            </div>
-            <div class="family-insight-card">
-                <div class="family-label">Previsão de fim do mês</div>
-                <div class="family-insight-title">Ao ritmo atual irão terminar o mês com {projection_signal}{money(projection)}</div>
-            </div>
-            <div class="family-insight-card">
-                <div class="family-label">Score financeiro</div>
-                <div class="family-insight-title">Saúde Financeira: {health_score}/100</div>
-            </div>
+            <div class="family-insight-card"><div class="family-label">Resumo do mês</div><div class="family-insight-title">{month_story}</div></div>
+            <div class="family-insight-card"><div class="family-label">Insight automático</div><div class="family-insight-title">{('Entradas cobrem despesas com margem.' if margin >= 0 else 'Despesas superam entradas neste período.')}</div></div>
+            <div class="family-insight-card"><div class="family-label">Comparação mensal</div><div class="family-insight-title">{trend} {money(abs(delta_balance))} ({delta_pct:.1f}%) vs mês anterior</div></div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
 
 def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[str]) -> None:
@@ -517,6 +480,13 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
             """,
             unsafe_allow_html=True,
         )
+
+    flow_df = page_df.copy() if not page_df.empty else pd.DataFrame()
+    if not flow_df.empty:
+        flow_df["signed_value"] = flow_df.apply(lambda r: float(r["value"]) if str(r["type_normalized"]) == "salário" else -float(r["value"]), axis=1)
+        flow_df = flow_df.sort_values("date").tail(20)
+        st.markdown('<div class="section-title">Fluxo financeiro</div>', unsafe_allow_html=True)
+        st.line_chart(flow_df.set_index("date")["signed_value"], height=140)
 
     form_col, list_col = st.columns([1, 1.2])
     with form_col:
@@ -714,6 +684,15 @@ def render_categories(categories_df: pd.DataFrame) -> None:
     if categories_df.empty:
         st.info("Ainda não existem categorias.")
         return
+    usage_df = load_transactions()
+    if not categories_df.empty:
+        usage_counts = usage_df[usage_df["type"].fillna("").str.lower().eq("despesa")].groupby("category").agg(total=("value","sum"), usos=("id","count")).reset_index() if not usage_df.empty else pd.DataFrame(columns=["category","total","usos"])
+        usage_map = {str(r["category"]): (float(r["total"]), int(r["usos"])) for _, r in usage_counts.iterrows()}
+        for _, c in categories_df.iterrows():
+            cname = str(c["name"])
+            total, usos = usage_map.get(cname, (0.0,0))
+            st.markdown(f'<div class="category-grid-card category-grid-card-modern"><div class="category-card-main"><div class="category-name">🏷️ {escape(cname)}</div><div class="small-muted">{money(total)} · {usos} usos</div></div></div>', unsafe_allow_html=True)
+
     with st.expander("Gerir categorias", expanded=True):
         options = {row["name"]: int(row["id"]) for _, row in categories_df.iterrows()}
         selected = st.radio("Selecionar categoria", list(options.keys()), horizontal=True)
@@ -751,6 +730,10 @@ def render_export(transactions_df: pd.DataFrame) -> None:
         years = sorted(transactions_df["year"].dropna().astype(int).unique().tolist(), reverse=True)
         if today.year not in years:
             years = [today.year, *years]
+
+    income, expense, balance = financial_summary(transactions_df)
+    forecast = balance + ((balance / max(today.day, 1)) * max(30 - today.day, 0)) if not transactions_df.empty else 0
+    st.markdown(f"""<div class="export-summary-card"><div class="export-summary-grid"><div class="export-summary-item"><div class="export-summary-label">Resumo</div><div class="export-summary-value">Saldo {money(balance)}</div></div><div class="export-summary-item"><div class="export-summary-label">Insight</div><div class="export-summary-value">{('Boa margem atual' if balance >= 0 else 'Atenção às despesas')}</div></div><div class="export-summary-item"><div class="export-summary-label">Previsão mensal</div><div class="export-summary-value">{money(forecast)}</div></div></div></div>""", unsafe_allow_html=True)
 
     col_year, col_month = st.columns(2)
     with col_year:
