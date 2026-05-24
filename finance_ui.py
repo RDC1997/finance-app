@@ -1650,6 +1650,21 @@ CSS = """
     .goal-percent-center{font-size:2.4rem!important;font-weight:900;color:#0f766e;}
     .goal-progress-fill{box-shadow:0 0 0 1px rgba(255,255,255,.22),0 8px 20px rgba(15,23,42,.2);}
 
+
+    .couple-hero {display:grid;grid-template-columns:1.1fr 1fr .7fr;gap:1rem;align-items:center;padding:1.25rem 1.35rem;border-radius:1.35rem;background:linear-gradient(135deg,rgba(15,23,42,.96),rgba(30,41,59,.86) 45%,rgba(14,116,144,.80));box-shadow:0 22px 45px rgba(15,23,42,.28), inset 0 1px 0 rgba(255,255,255,.15);border:1px solid rgba(148,163,184,.35);backdrop-filter: blur(8px);position:relative;overflow:hidden;}
+    .couple-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%, rgba(45,212,191,.22), transparent 35%);}    
+    .family-balance{font-size:clamp(2rem,4.5vw,3rem);font-weight:900;color:#f8fafc!important;}
+    .hero-micro{font-size:.82rem;color:#dbeafe!important;}
+    .health-pill{display:inline-flex;padding:.35rem .7rem;border-radius:999px;font-size:.75rem;font-weight:700;background:rgba(255,255,255,.14);color:#fff!important}
+    .state-healthy{box-shadow:0 0 0 1px rgba(52,211,153,.35),0 0 18px rgba(52,211,153,.25)}
+    .state-warning{box-shadow:0 0 0 1px rgba(250,204,21,.35),0 0 18px rgba(250,204,21,.2)}
+    .state-danger{box-shadow:0 0 0 1px rgba(248,113,113,.4),0 0 18px rgba(248,113,113,.25)}
+    .activity-item{display:flex;justify-content:space-between;align-items:center;padding:.7rem .85rem;margin-bottom:.45rem;border:1px solid rgba(203,213,225,.8);border-radius:.9rem;background:rgba(255,255,255,.8);transition:all .15s ease;}
+    .activity-item:hover{transform:translateY(-1px);box-shadow:0 8px 16px rgba(15,23,42,.08);}
+    .person-tone-ruben{background:linear-gradient(135deg,#eff6ff,#ecfeff)!important;border-color:rgba(14,165,233,.35)!important;}
+    .person-tone-gabi{background:linear-gradient(135deg,#f5f3ff,#eff6ff)!important;border-color:rgba(139,92,246,.32)!important;}
+    .stButton > button{border-radius:.8rem!important;border:1px solid rgba(148,163,184,.45)!important;background:rgba(255,255,255,.86)!important;}
+
 </style>
 """
 

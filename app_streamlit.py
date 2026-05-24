@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from html import escape
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from finance_db import init_database
@@ -309,6 +310,33 @@ def render_person_breakdown(person: str, person_df: pd.DataFrame) -> None:
                 )
 
 
+def render_plotly_flow_chart(flow_df: pd.DataFrame, accent: str) -> None:
+    if flow_df.empty:
+        return
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=flow_df["date"],
+            y=flow_df["signed_value"],
+            mode="lines+markers",
+            line={"width": 3, "color": accent},
+            marker={"size": 7, "color": accent},
+            fill="tozeroy",
+            fillcolor="rgba(59,130,246,0.10)",
+            hovertemplate="%{x}<br>Fluxo: %{y:.2f}€<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        margin=dict(l=8, r=8, t=8, b=8),
+        height=190,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False, title=None),
+        yaxis=dict(showgrid=True, gridcolor="rgba(148,163,184,0.2)", title=None, zeroline=False),
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
 
 
 def normalize_type_label(value: str) -> str:
@@ -385,9 +413,9 @@ def render_dashboard(filtered_df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
 
     st.markdown(f"""
         <div class="couple-hero hero-{health_state}">
-            <div class="family-label">Saldo atual do casal</div>
-            <div class="family-balance">{money(balance)}</div>
-            <div class="family-note">{hero_context}</div>
+            <div class="hero-left"><div class="family-label">💎 Rubi & Gabi · Estado financeiro</div><div class="family-note">{hero_context}</div></div>
+            <div class="hero-center"><div class="family-balance">{money(balance)}</div><div class="hero-micro">↕ {money(abs(delta_balance))} ({delta_pct:.1f}%) vs mês anterior</div></div>
+            <div class="hero-right"><div class="health-pill state-{health_state}">{'Em alta' if health_state=='healthy' else 'Em atenção' if health_state=='warning' else 'Ajustar'}</div><div class="family-note">Taxa poupança {savings_rate:.1f}%</div></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -486,7 +514,25 @@ def render_person_page(page: str, filtered_df: pd.DataFrame, categories: list[st
         flow_df["signed_value"] = flow_df.apply(lambda r: float(r["value"]) if str(r["type_normalized"]) == "salário" else -float(r["value"]), axis=1)
         flow_df = flow_df.sort_values("date").tail(20)
         st.markdown('<div class="section-title">Fluxo financeiro</div>', unsafe_allow_html=True)
-        st.line_chart(flow_df.set_index("date")["signed_value"], height=140)
+        accent = "#0ea5e9" if page == "Ruben" else "#8b5cf6"
+        render_plotly_flow_chart(flow_df, accent)
+
+    insights_col, feed_col = st.columns([1, 1])
+    with insights_col:
+        month_balance = pdata["total_balance"]
+        insight = "Excelente controlo este mês." if month_balance > 0 else "Sugestão: reduzir 1 categoria dominante."
+        st.markdown(f"""<div class="family-insight-card person-tone-{page.lower()}"><div class="family-label">Insight automático</div><div class="family-insight-title">{insight}</div><div class="family-note">Saldo atual: {money(month_balance)}</div></div>""", unsafe_allow_html=True)
+    with feed_col:
+        st.markdown('<div class="section-title">Activity feed</div>', unsafe_allow_html=True)
+        recent = page_df.head(5) if not page_df.empty else pd.DataFrame()
+        if recent.empty:
+            st.markdown('<div class="empty-mini-card">Sem atividade recente.</div>', unsafe_allow_html=True)
+        else:
+            for _, row in recent.iterrows():
+                icon = "💰" if str(row["type_normalized"]) == "salário" else "🧾"
+                amount = f"+{money(row['value'])}" if str(row["type_normalized"]) == "salário" else f"-{money(row['value'])}"
+                amount_class = "income" if str(row["type_normalized"]) == "salário" else "expense"
+                st.markdown(f"""<div class="activity-item"><div>{icon} {escape(category_label(str(row.get('category') or 'Movimento')))}<div class="movement-meta">{row['date']}</div></div><div class="{amount_class}">{amount}</div></div>""", unsafe_allow_html=True)
 
     form_col, list_col = st.columns([1, 1.2])
     with form_col:
@@ -637,11 +683,11 @@ def render_goals(goals_df: pd.DataFrame) -> None:
             unsafe_allow_html=True,
         )
 
-        amount_col, add_col, remove_col, delete_col = st.columns([1.25, 1, 1, 1])
+        amount_col, add_col, remove_col, delete_col = st.columns([1.6, 0.7, 0.7, 0.7])
         with amount_col:
             amount = st.number_input("Valor", min_value=0.0, step=5.0, key=f"goal_amount_{goal_id}")
         with add_col:
-            if st.button("Adicionar", key=f"add_goal_{goal_id}", use_container_width=True) and amount > 0:
+            if st.button("➕", key=f"add_goal_{goal_id}", help="Adicionar valor") and amount > 0:
                 execute_write(
                     "UPDATE goals SET current_amount = current_amount + :amount WHERE id = :id",
                     {"amount": amount, "id": goal_id},
@@ -649,7 +695,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                 st.success("Valor adicionado.")
                 st.rerun()
         with remove_col:
-            if st.button("Retirar", key=f"remove_goal_value_{goal_id}", use_container_width=True) and amount > 0:
+            if st.button("➖", key=f"remove_goal_value_{goal_id}", help="Retirar valor") and amount > 0:
                 execute_write(
                     "UPDATE goals SET current_amount = :value WHERE id = :id",
                     {"value": max(current_value - amount, 0), "id": goal_id},
@@ -657,7 +703,7 @@ def render_goals(goals_df: pd.DataFrame) -> None:
                 st.success("Valor retirado.")
                 st.rerun()
         with delete_col:
-            if st.button("Remover", key=f"delete_goal_{goal_id}", use_container_width=True):
+            if st.button("🗑", key=f"delete_goal_{goal_id}", help="Remover meta"):
                 execute_write("DELETE FROM goals WHERE id = :id", {"id": goal_id})
                 st.success("Meta removida.")
                 st.rerun()
