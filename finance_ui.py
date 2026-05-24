@@ -1245,6 +1245,22 @@ CSS = """
 
 
 
+
+    .couple-hero {
+        border-radius: 1.35rem;
+        padding: 1.2rem 1rem;
+        margin: .2rem 0 1rem;
+        box-shadow: 0 26px 52px rgba(15,23,42,.18);
+        text-align: center;
+    }
+    .couple-hero .family-label,.couple-hero .family-balance,.couple-hero .family-note { color:#fff !important; }
+    .hero-healthy{background:linear-gradient(140deg,#0f766e,#22c55e,#16a34a)!important;}
+    .hero-warning{background:linear-gradient(140deg,#b45309,#f59e0b,#facc15)!important;}
+    .hero-danger{background:linear-gradient(140deg,#b91c1c,#ef4444,#f97316)!important;}
+    .couple-secondary-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .metric-track{background:#e2e8f0;border-radius:999px;height:8px;overflow:hidden;margin:.5rem 0 .35rem;}
+    .metric-track span{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#14b8a6);border-radius:inherit;}
+
     .family-dashboard-grid {
         display: grid;
         gap: 1rem;
