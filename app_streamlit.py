@@ -9,13 +9,21 @@ import streamlit as st
 
 from finance_db import init_database
 from finance_repository import execute_write, load_categories, load_goals, load_transactions
-from finance_ui import MONTHS, PEOPLE, apply_style, filter_data, money, page_title, sidebar_brand
+from finance_ui import MONTHS, PEOPLE, apply_style, money, page_title, sidebar_brand
 
 st.set_page_config(page_title="Rubi & Gabi Finance", layout="wide", page_icon="€")
 apply_style()
 init_database()
 
-INCOME_TYPES = {"salário", "salario", "subsídio de alimentação", "subsidio de alimentação", "subsídio alimentação"}
+INCOME_TYPES = {
+    "salário",
+    "salario",
+    "subsídio de alimentação",
+    "subsidio de alimentação",
+    "subsídio alimentação",
+    "subsidio alimentação",
+}
+MOVEMENT_TYPES = ["Salário", "Subsídio de alimentação", "Despesa"]
 EXPENSE_LABEL = "Despesa"
 ADD_CATEGORY_OPTION = "+ Adicionar categoria"
 PROTECTED_CATEGORY = "Outros"
@@ -23,18 +31,19 @@ PROTECTED_CATEGORY = "Outros"
 
 def normalize_type_label(value: str) -> str:
     value_norm = str(value or "").strip().lower()
-    return "salário" if value_norm in INCOME_TYPES else "despesa"
+    return "entrada" if value_norm in INCOME_TYPES else "despesa"
 
 
 def is_income(value: str) -> bool:
-    return normalize_type_label(value) == "salário"
+    return normalize_type_label(value) == "entrada"
 
 
 def ensure_outros(categories_df: pd.DataFrame) -> list[str]:
     categories = categories_df["name"].dropna().astype(str).tolist() if not categories_df.empty else []
     if PROTECTED_CATEGORY not in categories:
         categories.append(PROTECTED_CATEGORY)
-    return sorted(dict.fromkeys(categories), key=lambda item: (item == PROTECTED_CATEGORY, item.lower()))
+    unique_categories = dict.fromkeys(category.strip() for category in categories if category and category.strip())
+    return sorted(unique_categories, key=lambda item: (item == PROTECTED_CATEGORY, item.lower()))
 
 
 def clear_and_refresh() -> None:
@@ -83,10 +92,26 @@ def render_metric_card(title: str, value: str, tone: str = "neutral", helper: st
     )
 
 
-def render_main_balance_card(title: str, value: float, subtitle: str, positive_text: str, negative_text: str, amount_subtitle: str = "") -> None:
+def render_summary_row(rows: list[tuple[str, str]]) -> None:
+    rows_html = "".join(
+        f"<div class='quick-summary-row'><span>{escape(label)}</span><strong>{escape(value)}</strong></div>"
+        for label, value in rows
+    )
+    st.markdown(f"<div class='quick-summary-card'>{rows_html}</div>", unsafe_allow_html=True)
+
+
+def render_main_balance_card(
+    title: str,
+    value: float,
+    subtitle: str,
+    positive_text: str,
+    negative_text: str,
+    amount_subtitle: str = "",
+) -> None:
     positive = value >= 0
     level = "positive-card" if positive else "negative-card"
     message = positive_text if positive else negative_text
+    amount_subtitle_html = f"<div class='hero-amount-subtitle'>{escape(amount_subtitle)}</div>" if amount_subtitle else ""
     st.markdown(
         f"""
         <div class="finance-hero-card {level}">
@@ -97,7 +122,7 @@ def render_main_balance_card(title: str, value: float, subtitle: str, positive_t
             </div>
             <div class="hero-amount-block">
                 <div class="hero-amount">{escape(money(value))}</div>
-                {f'<div class="hero-amount-subtitle">{escape(amount_subtitle)}</div>' if amount_subtitle else ''}
+                {amount_subtitle_html}
             </div>
         </div>
         """,
@@ -112,8 +137,6 @@ def goal_progress(current: float, target: float) -> int:
 def goal_colour(progress: int, missing: float) -> str:
     if missing <= 0 or progress >= 75:
         return "#059669"
-    if progress < 25:
-        return "#f59e0b"
     return "#2563eb"
 
 
@@ -200,13 +223,14 @@ def render_goal_card(goal: pd.Series, monthly_capacity: float, editable: bool = 
         return
 
     with st.form(f"goal_form_{goal_id}", clear_on_submit=True):
-        c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1])
+        c1, c2, c3, c4 = st.columns([1.2, 1.1, 1.1, 1.1])
         with c1:
             amount = st.number_input("Valor", min_value=0.0, step=5.0, key=f"goal_amount_{goal_id}")
         with c2:
             st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
             add_submitted = st.form_submit_button("Adicionar valor à meta", type="primary", use_container_width=True)
         with c3:
+            st.markdown("<div class='info-action-marker'></div>", unsafe_allow_html=True)
             remove_submitted = st.form_submit_button("Retirar valor da meta", use_container_width=True)
         with c4:
             st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
@@ -229,11 +253,20 @@ def render_goal_card(goal: pd.Series, monthly_capacity: float, editable: bool = 
         st.rerun()
 
 
+def display_type_for_edit(value: str) -> str:
+    clean = str(value or "").strip().lower()
+    if clean in {"subsídio de alimentação", "subsidio de alimentação", "subsídio alimentação", "subsidio alimentação"}:
+        return "Subsídio de alimentação"
+    if clean in {"salário", "salario"}:
+        return "Salário"
+    return EXPENSE_LABEL
+
+
 def movement_defaults_for_type(movement_type: str, category: str) -> tuple[str, str]:
     if movement_type == EXPENSE_LABEL:
         return movement_type, category or PROTECTED_CATEGORY
-    if movement_type == "Subsídio de Alimentação":
-        return movement_type, "Subsídio Alimentação"
+    if movement_type == "Subsídio de alimentação":
+        return movement_type, "Subsídio de alimentação"
     return movement_type, "Salário"
 
 
@@ -296,6 +329,29 @@ def update_transaction(transaction_id: int, movement_type: str, category: str, d
     return True
 
 
+def render_add_movement_form(person: str, categories: list[str]) -> None:
+    with st.container(border=True):
+        movement_type = st.selectbox("Tipo de movimento", MOVEMENT_TYPES, key=f"add_type_{person}")
+        category = ""
+        description = ""
+
+        if movement_type == EXPENSE_LABEL:
+            category = st.selectbox("Categoria", categories, key=f"add_category_{person}")
+            if category == PROTECTED_CATEGORY:
+                description = st.text_input("Descrição obrigatória", key=f"add_description_{person}")
+
+        c1, c2 = st.columns(2)
+        with c1:
+            value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{person}")
+        with c2:
+            movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{person}")
+
+        st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
+        submitted = st.button("Adicionar movimento", key=f"submit_add_transaction_{person}", use_container_width=True)
+        if submitted and save_transaction(person, movement_type, category, description, value, movement_date):
+            clear_and_refresh()
+
+
 def render_movement_card(row: pd.Series, categories: list[str] | None = None, editable: bool = False) -> None:
     income_row = is_income(row.get("type"))
     sign = "+" if income_row else "-"
@@ -325,28 +381,28 @@ def render_movement_card(row: pd.Series, categories: list[str] | None = None, ed
     if not editable or categories is None:
         return
 
-    with st.expander("Editar ou eliminar", expanded=False):
-        options = ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL]
-        current_type = EXPENSE_LABEL if not income_row else str(row.get("type") or "Salário")
-        if current_type not in options:
-            current_type = "Salário"
-        movement_type = st.selectbox("Tipo de movimento", options, index=options.index(current_type), key=f"edit_type_{transaction_id}")
+    with st.expander("Gerir este movimento", expanded=False):
+        current_type = display_type_for_edit(str(row.get("type") or ""))
+        movement_type = st.selectbox("Tipo de movimento", MOVEMENT_TYPES, index=MOVEMENT_TYPES.index(current_type), key=f"edit_type_{transaction_id}")
         edit_category = PROTECTED_CATEGORY
+        edit_description = ""
         if movement_type == EXPENSE_LABEL:
             current_category = category if category in categories else PROTECTED_CATEGORY
             edit_category = st.selectbox("Categoria", categories, index=categories.index(current_category), key=f"edit_category_{transaction_id}")
-        edit_description = ""
-        if movement_type == EXPENSE_LABEL and edit_category == PROTECTED_CATEGORY:
-            edit_description = st.text_input("Descrição obrigatória", value=description, key=f"edit_description_{transaction_id}")
-        edit_value = st.number_input("Valor", min_value=0.0, step=1.0, value=float(row.get("value", 0)), key=f"edit_value_{transaction_id}")
-        parsed_date = pd.to_datetime(row.get("date"), errors="coerce")
-        default_date = parsed_date.date() if not pd.isna(parsed_date) else date.today()
-        edit_date = st.date_input("Data", value=min(default_date, date.today()), max_value=date.today(), key=f"edit_date_{transaction_id}")
+            if edit_category == PROTECTED_CATEGORY:
+                edit_description = st.text_input("Descrição obrigatória", value=description, key=f"edit_description_{transaction_id}")
         c1, c2 = st.columns(2)
         with c1:
+            edit_value = st.number_input("Valor", min_value=0.0, step=1.0, value=float(row.get("value", 0)), key=f"edit_value_{transaction_id}")
+        with c2:
+            parsed_date = pd.to_datetime(row.get("date"), errors="coerce")
+            default_date = parsed_date.date() if not pd.isna(parsed_date) else date.today()
+            edit_date = st.date_input("Data", value=min(default_date, date.today()), max_value=date.today(), key=f"edit_date_{transaction_id}")
+        c3, c4 = st.columns(2)
+        with c3:
             st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
             saved = st.button("Guardar alteração", key=f"save_transaction_{transaction_id}", use_container_width=True)
-        with c2:
+        with c4:
             st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
             deleted = st.button("Eliminar movimento", key=f"delete_transaction_{transaction_id}", use_container_width=True)
 
@@ -360,19 +416,19 @@ def render_movement_card(row: pd.Series, categories: list[str] | None = None, ed
 def summarize_money(df: pd.DataFrame) -> tuple[float, float, float]:
     if df.empty:
         return 0.0, 0.0, 0.0
-    income = float(df[df["type"].apply(normalize_type_label) == "salário"]["value"].sum())
-    expense = float(df[df["type"].apply(normalize_type_label) == "despesa"]["value"].sum())
+    income = float(df[df["type"].apply(is_income)]["value"].sum())
+    expense = float(df[~df["type"].apply(is_income)]["value"].sum())
     return income, expense, income - expense
 
 
 def top_expense_and_category(df: pd.DataFrame) -> tuple[pd.Series | None, pd.Series]:
-    exp_df = df[df["type"].apply(normalize_type_label) == "despesa"] if not df.empty else pd.DataFrame()
-    top_expense = exp_df.sort_values("value", ascending=False).iloc[0] if not exp_df.empty else None
-    top_category = exp_df.groupby("category")["value"].sum().sort_values(ascending=False) if not exp_df.empty else pd.Series(dtype=float)
-    return top_expense, top_category
+    expenses = df[~df["type"].apply(is_income)].copy() if not df.empty else pd.DataFrame()
+    top = expenses.sort_values("value", ascending=False).iloc[0] if not expenses.empty else None
+    top_category = expenses.groupby("category")["value"].sum().sort_values(ascending=False) if not expenses.empty else pd.Series(dtype=float)
+    return top, top_category
 
 
-def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[str]) -> None:
+def render_person_page(person: str, data: pd.DataFrame, categories: list[str]) -> None:
     page_title(person, "Resumo individual para veres o essencial e registares movimentos rapidamente.")
     pdf = data[data["person"] == person].copy() if not data.empty else pd.DataFrame()
     income, expense, balance = summarize_money(pdf)
@@ -410,23 +466,10 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
         ]
         if not top_category.empty and (top_expense is None or str(top_category.index[0]) != str(top_expense["category"])):
             rows.append(("Onde gastaste mais", f"{top_category.index[0]} — {money(float(top_category.iloc[0]))}"))
-        render_quick_summary(rows)
+        render_summary_row(rows)
     with quick_cols[1]:
         render_section_header("Adicionar movimento")
-        with st.container(border=True):
-            movement_type = st.selectbox("Tipo de movimento", ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL], key=f"add_type_{person}")
-            category = ""
-            description = ""
-            if movement_type == EXPENSE_LABEL:
-                category = st.selectbox("Categoria", categories, key=f"add_category_{person}")
-                if category == PROTECTED_CATEGORY:
-                    description = st.text_input("Descrição obrigatória", key=f"add_description_{person}")
-            value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{person}")
-            movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{person}")
-            st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
-            submitted = st.button("Adicionar movimento", key=f"submit_add_transaction_{person}", use_container_width=True)
-            if submitted and save_transaction(person, movement_type, category, description, value, movement_date):
-                clear_and_refresh()
+        render_add_movement_form(person, categories)
 
     render_section_header("Últimos movimentos")
     if pdf.empty:
@@ -437,10 +480,7 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
 
 
 def render_quick_summary(rows: list[tuple[str, str]]) -> None:
-    items = "".join(
-        f"<div class='quick-summary-row'><span>{escape(label)}</span><strong>{escape(value)}</strong></div>" for label, value in rows
-    )
-    st.markdown(f"<div class='quick-summary-card'>{items}</div>", unsafe_allow_html=True)
+    render_summary_row(rows)
 
 
 def render_couple_dashboard(df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
@@ -466,9 +506,7 @@ def render_couple_dashboard(df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
         render_metric_card("Movimentos", str(len(df)), "info", "Registos no período")
 
     render_section_header("Resumo rápido")
-    top_line = "Sem despesas registadas"
-    if top is not None:
-        top_line = f"{top['category']} — {money(float(top['value']))}"
+    top_line = "Sem despesas registadas" if top is None else f"{top['category']} — {money(float(top['value']))}"
     rows = [
         ("Recebido este mês", money(income)),
         ("Gasto este mês", money(expense)),
@@ -508,13 +546,13 @@ def render_goals_page(goals_df: pd.DataFrame, tx_df: pd.DataFrame) -> None:
     with cols[0]:
         render_metric_card("Total guardado", money(total_saved), "income")
     with cols[1]:
-        render_metric_card("Total em falta", money(total_missing), "expense")
+        render_metric_card("Total em falta", money(total_missing), "info")
     with cols[2]:
         render_metric_card("Metas ativas", str(len(goals_df)), "neutral")
     with cols[3]:
         render_metric_card("Meta mais próxima", closest, "info", closest_helper)
 
-    income, expense, balance = summarize_money(tx_df)
+    _, _, balance = summarize_money(tx_df)
     monthly_capacity = max(balance * 0.25, 0)
 
     render_section_header("Lista de metas existentes")
@@ -535,6 +573,7 @@ def render_goals_page(goals_df: pd.DataFrame, tx_df: pd.DataFrame) -> None:
                     target = st.number_input("Objetivo", min_value=0.0, step=10.0)
                 with c3:
                     current = st.number_input("Valor atual", min_value=0.0, step=10.0)
+                st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
                 submitted = st.form_submit_button("Guardar meta", type="primary", use_container_width=True)
             if submitted:
                 if not name.strip() or target <= 0:
@@ -547,11 +586,13 @@ def render_goals_page(goals_df: pd.DataFrame, tx_df: pd.DataFrame) -> None:
                     clear_and_refresh()
 
 
-def set_category_mode(mode: str | None) -> None:
+def set_category_mode(mode: str | None, selected: str | None = None) -> None:
     if mode is None:
         st.session_state.pop("category_mode", None)
-    else:
-        st.session_state["category_mode"] = mode
+        st.session_state.pop("category_mode_selected", None)
+        return
+    st.session_state["category_mode"] = mode
+    st.session_state["category_mode_selected"] = selected
 
 
 def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> None:
@@ -564,11 +605,11 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
         selected = st.selectbox("Selecionar categoria", options, key="selected_category")
 
         if selected == ADD_CATEGORY_OPTION:
-            st.session_state.setdefault("category_mode", "add")
             with st.form("add_category_form", clear_on_submit=True):
                 new_name = st.text_input("Nome")
                 c1, c2 = st.columns(2)
                 with c1:
+                    st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
                     saved = st.form_submit_button("Guardar categoria", type="primary", use_container_width=True)
                 with c2:
                     cancelled = st.form_submit_button("Cancelar", use_container_width=True)
@@ -588,7 +629,12 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
             return
 
         st.markdown(
-            f"<div class='selected-movement-card'><div class='selected-movement-eyebrow'>Categoria selecionada</div><div class='selected-movement-title'>{escape(selected)}</div></div>",
+            f"""
+            <div class='selected-movement-card'>
+                <div class='selected-movement-eyebrow'>Categoria selecionada</div>
+                <div class='selected-movement-title'>{escape(selected)}</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
@@ -597,16 +643,20 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
             return
 
         mode = st.session_state.get("category_mode")
+        mode_selected = st.session_state.get("category_mode_selected")
+        if mode_selected != selected:
+            mode = None
+
         if mode not in {"edit", "delete"}:
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("Editar nome", use_container_width=True):
-                    set_category_mode("edit")
+                    set_category_mode("edit", selected)
                     st.rerun()
             with c2:
                 st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
                 if st.button("Eliminar categoria", use_container_width=True):
-                    set_category_mode("delete")
+                    set_category_mode("delete", selected)
                     st.rerun()
             return
 
@@ -615,6 +665,7 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
                 new_name = st.text_input("Novo nome", value=selected)
                 c1, c2 = st.columns(2)
                 with c1:
+                    st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
                     saved = st.form_submit_button("Guardar alteração", type="primary", use_container_width=True)
                 with c2:
                     cancelled = st.form_submit_button("Cancelar", use_container_width=True)
@@ -636,7 +687,13 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
                 st.rerun()
             return
 
-        st.warning("Ao eliminar, os movimentos desta categoria passam para Outros para não perder histórico.")
+        affected = 0
+        if not tx_df.empty and "category" in tx_df.columns:
+            affected = int((tx_df["category"] == selected).sum())
+        if affected:
+            st.warning(f"Ao eliminar, {affected} movimento(s) desta categoria passam para Outros para manter o histórico.")
+        else:
+            st.warning("Queres mesmo eliminar esta categoria? Esta ação não pode ser desfeita.")
         with st.form("delete_category_form"):
             c1, c2 = st.columns(2)
             with c1:
@@ -696,12 +753,12 @@ def render_export_page(df: pd.DataFrame) -> None:
     with st.container(border=True):
         filters = st.columns(3)
         with filters[0]:
-            year = st.selectbox("Ano", years)
+            year = st.selectbox("Ano", years, key="export_year")
         with filters[1]:
             month_names = [month for month in MONTHS if month != "Todos"]
-            month_name = st.selectbox("Mês", month_names, index=today.month - 1)
+            month_name = st.selectbox("Mês", month_names, index=today.month - 1, key="export_month")
         with filters[2]:
-            person = st.selectbox("Pessoa", ["Todos"] + PEOPLE)
+            person = st.selectbox("Pessoa", ["Todos"] + PEOPLE, key="export_person")
 
     month = MONTHS[month_name]
     export_df = df[(df["year"] == int(year)) & (df["month"] == int(month))].copy() if not df.empty else pd.DataFrame()
@@ -727,7 +784,8 @@ def render_export_page(df: pd.DataFrame) -> None:
     visible_df = export_table_pt(export_df, format_value=True)
     excel_df = export_table_pt(export_df, format_value=False)
     c1, c2 = st.columns(2)
-    file_suffix = f"{year}_{month:02d}" + (f"_{person.lower()}" if person != "Todos" else "")
+    safe_person = person.lower().replace(" ", "_") if person != "Todos" else "todos"
+    file_suffix = f"{year}_{month:02d}_{safe_person}"
     with c1:
         st.download_button(
             "Descarregar CSV",
@@ -747,31 +805,87 @@ def render_export_page(df: pd.DataFrame) -> None:
     st.dataframe(visible_df, use_container_width=True, hide_index=True)
 
 
+def filter_transactions(dataframe: pd.DataFrame) -> pd.DataFrame:
+    if dataframe.empty:
+        with st.sidebar.container(border=True):
+            st.markdown('<div class="sidebar-section-label">Filtros rápidos</div>', unsafe_allow_html=True)
+            st.selectbox("Pessoa", ["Todos"] + PEOPLE, disabled=True)
+            st.selectbox("Ano", [date.today().year], disabled=True)
+            st.selectbox("Mês", list(MONTHS.keys()), disabled=True)
+            st.text_input("Pesquisar movimentos", disabled=True)
+        return dataframe
+
+    filtered = dataframe.copy()
+    with st.sidebar.container(border=True):
+        st.markdown('<div class="sidebar-section-label">Filtros rápidos</div>', unsafe_allow_html=True)
+        selected_person = st.selectbox("Pessoa", ["Todos"] + PEOPLE, key="filter_person")
+        if selected_person != "Todos":
+            filtered = filtered[filtered["person"] == selected_person]
+
+        years = sorted(filtered["year"].dropna().astype(int).unique().tolist(), reverse=True)
+        if not years:
+            years = [date.today().year]
+        selected_year = st.selectbox("Ano", ["Todos"] + years, key="filter_year")
+        if selected_year != "Todos":
+            filtered = filtered[filtered["year"] == int(selected_year)]
+
+        selected_month = st.selectbox("Mês", list(MONTHS.keys()), key="filter_month")
+        if MONTHS[selected_month] != 0:
+            filtered = filtered[filtered["month"] == MONTHS[selected_month]]
+
+        search = st.text_input("Pesquisar movimentos", key="filter_search")
+        if search.strip():
+            term = search.strip().lower()
+            searchable = filtered[["description", "category", "type", "person"]].fillna("").agg(" ".join, axis=1).str.lower()
+            filtered = filtered[searchable.str.contains(term, regex=False)]
+
+    return filtered
+
+
 def inject_app_polish() -> None:
     st.markdown(
         """
         <style>
+        :root {
+            --bg: #dde5ee;
+            --bg-2: #e1e7ef;
+            --surface: #ffffff;
+            --line: #cbd5e1;
+            --text: #0f172a;
+            --muted: #475569;
+            --green: #059669;
+            --green-deep: #047857;
+            --red: #dc2626;
+            --blue: #2563eb;
+        }
+        html, body, [data-testid="stAppViewContainer"], .stApp {
+            background: radial-gradient(circle at top left, #eef4fb 0, #dde5ee 34%, #d7e0eb 100%) !important;
+            color: var(--text) !important;
+        }
+        [data-testid="stMainBlockContainer"] { padding-top: 2.1rem !important; }
+        [data-testid="stHeader"] { background: rgba(221, 229, 238, .72) !important; }
         .compact-finance-card {
             min-height: 7.1rem !important;
-            padding: .86rem .95rem !important;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .07) !important;
+            padding: .92rem 1rem !important;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, .10) !important;
+            border: 1px solid rgba(148, 163, 184, .32) !important;
         }
         .compact-finance-card .family-value { font-size: clamp(1.28rem, 4.2vw, 1.75rem) !important; margin-top: .35rem !important; }
         .compact-finance-card .family-label { text-transform: none !important; letter-spacing: 0 !important; font-size: .84rem !important; }
         .finance-hero-card {
             align-items: center;
             background: linear-gradient(135deg, #ffffff, #eef6ff);
-            border: 1px solid rgba(148, 163, 184, .32);
-            border-radius: 1.15rem;
-            box-shadow: 0 14px 32px rgba(15, 23, 42, .09);
+            border: 1px solid rgba(148, 163, 184, .34);
+            border-radius: 1.2rem;
+            box-shadow: 0 20px 42px rgba(15, 23, 42, .12);
             display: flex;
             gap: 1rem;
             justify-content: space-between;
             margin: .25rem 0 1rem;
-            padding: 1rem 1.1rem;
+            padding: 1.05rem 1.15rem;
         }
-        .finance-hero-card.positive-card { background: linear-gradient(135deg, #ffffff, #ecfdf5 58%, #e0f2fe); border-color: rgba(5, 150, 105, .22); }
-        .finance-hero-card.negative-card { background: linear-gradient(135deg, #ffffff, #fff7ed 58%, #fee2e2); border-color: rgba(220, 38, 38, .22); }
+        .finance-hero-card.positive-card { background: linear-gradient(135deg, #ffffff, #ecfdf5 58%, #e0f2fe); border-color: rgba(5, 150, 105, .25); }
+        .finance-hero-card.negative-card { background: linear-gradient(135deg, #ffffff, #fff7ed 58%, #fee2e2); border-color: rgba(220, 38, 38, .25); }
         .hero-micro { color: #64748b !important; font-size: .8rem; font-weight: 850; }
         .hero-title { color: #0f172a !important; font-size: clamp(1.15rem, 4vw, 1.65rem); font-weight: 950; letter-spacing: -.03em; margin-top: .15rem; }
         .hero-subtitle { color: #475569 !important; font-size: .92rem; font-weight: 700; margin-top: .18rem; }
@@ -780,83 +894,98 @@ def inject_app_polish() -> None:
         .hero-amount-subtitle { color: #475569 !important; font-size: .82rem; font-weight: 850; margin-top: .1rem; }
         .negative-card .hero-amount { color: #dc2626 !important; }
         .quick-summary-card {
-            background: rgba(255,255,255,.96);
-            border: 1px solid rgba(216,224,235,.95);
+            background: rgba(255,255,255,.98);
+            border: 1px solid rgba(203,213,225,.98);
             border-radius: 1rem;
-            box-shadow: 0 10px 24px rgba(15,23,42,.06);
+            box-shadow: 0 14px 30px rgba(15,23,42,.09);
             padding: .75rem .9rem;
         }
         .quick-summary-row {
             align-items: center;
-            border-bottom: 2px solid #cbd5e1;
+            border-bottom: 1px solid #d7e0eb;
             display: flex;
             gap: .75rem;
             justify-content: space-between;
-            padding: .68rem 0;
+            padding: .72rem 0;
         }
         .quick-summary-row:last-child { border-bottom: 0; }
-        .quick-summary-row span { color: #334155 !important; font-weight: 900; }
+        .quick-summary-row span { color: #334155 !important; font-weight: 850; }
         .quick-summary-row strong { color: #0f172a !important; font-weight: 950; text-align: right; }
-        .clean-goal-card { box-shadow: 0 10px 24px rgba(15,23,42,.07) !important; }
-        [data-testid="stForm"] { background: rgba(255,255,255,.72) !important; border-color: rgba(148,163,184,.25) !important; box-shadow: 0 8px 18px rgba(15,23,42,.04) !important; }
+        .clean-goal-card { box-shadow: 0 16px 34px rgba(15,23,42,.10) !important; border-color: rgba(148,163,184,.30) !important; }
+        [data-testid="stForm"], [data-testid="stVerticalBlockBorderWrapper"] {
+            background: rgba(255,255,255,.83) !important;
+            border-color: rgba(148,163,184,.28) !important;
+            box-shadow: 0 12px 26px rgba(15,23,42,.07) !important;
+            border-radius: 1rem !important;
+        }
         .goal-progress-wrap { margin-top: -.35rem !important; margin-bottom: .75rem !important; }
-        .stButton > button,
-        .stDownloadButton > button,
-        button[data-testid="baseButton-secondary"],
-        button[data-testid="baseButton-primary"],
-        button[kind="secondary"],
-        button[kind="primary"] {
+        .goal-progress-track { background: #dbeafe !important; }
+        [data-testid="stSidebar"], [data-testid="stSidebarContent"], [data-testid="stSidebarUserContent"], [data-testid="stSidebarHeader"] {
+            background: linear-gradient(180deg, #f8fbff 0%, #edf3fa 100%) !important;
+        }
+        [data-testid="stSidebar"] { border-right: 1px solid #cbd5e1 !important; box-shadow: 12px 0 34px rgba(15, 23, 42, .08) !important; }
+        .sidebar-brand {
+            background: linear-gradient(135deg, #ffffff, #ecfdf5 55%, #dbeafe);
+            border: 1px solid rgba(37,99,235,.16);
+            border-radius: 1.15rem;
+            box-shadow: 0 14px 30px rgba(15,23,42,.08);
+            margin: .35rem 0 1rem;
+            padding: 1rem;
+        }
+        .sidebar-brand-title { color: #0f172a !important; font-size: 1.45rem !important; font-weight: 950 !important; letter-spacing: -.04em; }
+        .sidebar-brand-subtitle { color: #475569 !important; font-size: .86rem !important; font-weight: 700 !important; margin-top: .15rem; }
+        .sidebar-section-label { color: #334155 !important; font-size: .78rem; font-weight: 950; letter-spacing: .04em; margin-bottom: .45rem; text-transform: uppercase; }
+        [data-testid="stSidebar"] [role="radiogroup"] label {
+            border-radius: .8rem !important;
+            margin: .12rem 0 !important;
+            padding: .18rem .35rem !important;
+        }
+        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+            background: #dbeafe !important;
+            border: 1px solid rgba(37,99,235,.22) !important;
+            color: #1d4ed8 !important;
+            font-weight: 950 !important;
+        }
+        .stButton > button, .stDownloadButton > button, button[data-testid="baseButton-secondary"], button[data-testid="baseButton-primary"], button[kind="secondary"], button[kind="primary"] {
             color: #0f172a !important;
             -webkit-text-fill-color: #0f172a !important;
             font-weight: 850 !important;
+            border-radius: .82rem !important;
+            min-height: 2.8rem !important;
         }
-        button[data-testid="baseButton-primary"],
-        button[kind="primary"] {
+        button[data-testid="baseButton-primary"], button[kind="primary"] {
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
             background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
             border-color: #1d4ed8 !important;
         }
-        .stButton > button:hover,
-        .stDownloadButton > button:hover,
-        button[data-testid="baseButton-secondary"]:hover,
-        button[data-testid="baseButton-primary"]:hover,
-        button[kind="secondary"]:hover,
-        button[kind="primary"]:hover {
+        .stButton > button:hover, .stDownloadButton > button:hover, button[data-testid="baseButton-secondary"]:hover, button[data-testid="baseButton-primary"]:hover, button[kind="secondary"]:hover, button[kind="primary"]:hover {
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
             background: #1d4ed8 !important;
             border-color: #1d4ed8 !important;
         }
-        .stButton > button:active,
-        .stDownloadButton > button:active,
-        button:active {
+        .stButton > button:active, .stDownloadButton > button:active, button:active {
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
-        .stButton > button *,
-        .stDownloadButton > button *,
-        button[data-testid^="baseButton"] * {
+        .stButton > button *, .stDownloadButton > button *, button[data-testid^="baseButton"] * {
             color: inherit !important;
             -webkit-text-fill-color: inherit !important;
         }
-        .stButton > button:disabled,
-        .stDownloadButton > button:disabled,
-        button:disabled {
+        .stButton > button:disabled, .stDownloadButton > button:disabled, button:disabled {
             color: #475569 !important;
             -webkit-text-fill-color: #475569 !important;
             background: #e2e8f0 !important;
             border-color: #cbd5e1 !important;
         }
-        div:has(.danger-action-marker) + div button,
-        div:has(.danger-action-marker) + div button[kind="secondary"] {
+        div:has(.danger-action-marker) + div button, div:has(.danger-action-marker) + div button[kind="secondary"] {
             background: linear-gradient(135deg, #ef4444, #dc2626) !important;
             border-color: #b91c1c !important;
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
-        div:has(.danger-action-marker) + div button:hover,
-        div:has(.danger-action-marker) + div button:active {
+        div:has(.danger-action-marker) + div button:hover, div:has(.danger-action-marker) + div button:active {
             background: linear-gradient(135deg, #dc2626, #991b1b) !important;
             border-color: #991b1b !important;
             color: #ffffff !important;
@@ -868,15 +997,28 @@ def inject_app_polish() -> None:
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
-        div:has(.success-action-marker) + div button:hover,
-        div:has(.success-action-marker) + div button:active {
+        div:has(.success-action-marker) + div button:hover, div:has(.success-action-marker) + div button:active {
             background: linear-gradient(135deg, #047857, #065f46) !important;
             border-color: #065f46 !important;
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
+        div:has(.info-action-marker) + div button {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe) !important;
+            border-color: #93c5fd !important;
+            color: #1d4ed8 !important;
+            -webkit-text-fill-color: #1d4ed8 !important;
+        }
+        div:has(.info-action-marker) + div button:hover, div:has(.info-action-marker) + div button:active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+            border-color: #1d4ed8 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
         @media (max-width: 760px) {
+            [data-testid="stMainBlockContainer"] { padding-left: 1rem !important; padding-right: 1rem !important; }
             .finance-hero-card { align-items: flex-start; flex-direction: column; padding: .9rem; }
+            .hero-amount-block { text-align: left; }
             .hero-amount { white-space: normal; }
             .quick-summary-row { align-items: flex-start; flex-direction: column; gap: .2rem; }
             .quick-summary-row strong { text-align: left; }
@@ -895,12 +1037,12 @@ def main() -> None:
     transactions = load_transactions()
     goals = load_goals()
     categories = load_categories()
-    filtered = filter_data(transactions) if page in ["Casal", "Ruben", "Gabi"] else transactions
+    filtered = filter_transactions(transactions) if page in ["Casal", "Ruben", "Gabi"] else transactions
 
     if page == "Casal":
         render_couple_dashboard(filtered, goals)
     elif page in PEOPLE:
-        render_person_dashboard(page, filtered, ensure_outros(categories))
+        render_person_page(page, filtered, ensure_outros(categories))
     elif page == "Metas":
         render_goals_page(goals, transactions)
     elif page == "Categorias":
