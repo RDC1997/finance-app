@@ -83,7 +83,7 @@ def render_metric_card(title: str, value: str, tone: str = "neutral", helper: st
     )
 
 
-def render_main_balance_card(title: str, value: float, subtitle: str, positive_text: str, negative_text: str) -> None:
+def render_main_balance_card(title: str, value: float, subtitle: str, positive_text: str, negative_text: str, amount_subtitle: str = "") -> None:
     positive = value >= 0
     level = "positive-card" if positive else "negative-card"
     message = positive_text if positive else negative_text
@@ -95,7 +95,10 @@ def render_main_balance_card(title: str, value: float, subtitle: str, positive_t
                 <div class="hero-title">{escape(message)}</div>
                 <div class="hero-subtitle">{escape(subtitle)}</div>
             </div>
-            <div class="hero-amount">{escape(money(value))}</div>
+            <div class="hero-amount-block">
+                <div class="hero-amount">{escape(money(value))}</div>
+                {f'<div class="hero-amount-subtitle">{escape(amount_subtitle)}</div>' if amount_subtitle else ''}
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -133,14 +136,14 @@ def estimated_goal_time(missing: float, monthly_capacity: float) -> str:
     return f"cerca de {months} mês" if months == 1 else f"cerca de {months} meses"
 
 
-def render_goal_progress_bar(progress: int, missing: float) -> None:
+def render_goal_progress_bar(progress: int, missing: float, label: str = "Progresso") -> None:
     safe_progress = min(max(progress, 0), 100)
     colour = goal_colour(safe_progress, missing)
     st.markdown(
         f"""
         <div class="goal-progress-wrap">
             <div class="goal-progress-meta">
-                <span class="goal-progress-label">Progresso</span>
+                <span class="goal-progress-label">{escape(label)}</span>
                 <span class="goal-progress-percent">{safe_progress}%</span>
             </div>
             <div class="goal-progress-track">
@@ -169,14 +172,14 @@ def render_goal_card(goal: pd.Series, monthly_capacity: float, editable: bool = 
                 <div class="goal-amount">{escape(money(current))} / {escape(money(target))}</div>
             </div>
             <div class="goal-bottom-row">
-                <span>Falta {escape(money(missing))} · Previsão {escape(eta)}</span>
+                <span>Faltam {escape(money(missing))} para concluir esta meta. · Previsão {escape(eta)}</span>
                 <strong>{escape(goal_message(progress, missing))}</strong>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    render_goal_progress_bar(progress, missing)
+    render_goal_progress_bar(progress, missing, "Progresso" if editable else "Caminho até à meta")
 
     if not editable:
         return
@@ -185,7 +188,8 @@ def render_goal_card(goal: pd.Series, monthly_capacity: float, editable: bool = 
         st.warning(f"Queres mesmo eliminar a meta “{name}”? Esta ação não pode ser desfeita.")
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("Eliminar definitivamente", key=f"goal_delete_yes_{goal_id}", type="primary", use_container_width=True):
+            st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
+            if st.button("Eliminar definitivamente", key=f"goal_delete_yes_{goal_id}", use_container_width=True):
                 execute_write("DELETE FROM goals WHERE id = :id", {"id": goal_id})
                 st.session_state.pop(f"confirm_goal_delete_{goal_id}", None)
                 clear_and_refresh()
@@ -200,11 +204,13 @@ def render_goal_card(goal: pd.Series, monthly_capacity: float, editable: bool = 
         with c1:
             amount = st.number_input("Valor", min_value=0.0, step=5.0, key=f"goal_amount_{goal_id}")
         with c2:
-            add_submitted = st.form_submit_button("Adicionar", use_container_width=True)
+            st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
+            add_submitted = st.form_submit_button("Adicionar valor à meta", type="primary", use_container_width=True)
         with c3:
-            remove_submitted = st.form_submit_button("Retirar", use_container_width=True)
+            remove_submitted = st.form_submit_button("Retirar valor da meta", use_container_width=True)
         with c4:
-            delete_submitted = st.form_submit_button("Eliminar", use_container_width=True)
+            st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
+            delete_submitted = st.form_submit_button("Eliminar meta", use_container_width=True)
 
     if add_submitted:
         if amount <= 0:
@@ -239,7 +245,7 @@ def save_transaction(person: str, movement_type: str, category: str, description
     if movement_date > date.today():
         st.error("A data não pode ser futura.")
         return False
-    if final_category == PROTECTED_CATEGORY and not description.strip():
+    if final_type == EXPENSE_LABEL and final_category == PROTECTED_CATEGORY and not description.strip():
         st.error("Na categoria Outros, a descrição é obrigatória.")
         return False
 
@@ -252,7 +258,7 @@ def save_transaction(person: str, movement_type: str, category: str, description
             "person": person,
             "type": final_type,
             "category": final_category,
-            "description": description.strip(),
+            "description": description.strip() if final_type == EXPENSE_LABEL and final_category == PROTECTED_CATEGORY else "",
             "value": value,
             "date": str(movement_date),
             "payment_source": "Salário",
@@ -269,7 +275,7 @@ def update_transaction(transaction_id: int, movement_type: str, category: str, d
     if movement_date > date.today():
         st.error("A data não pode ser futura.")
         return False
-    if final_category == PROTECTED_CATEGORY and not description.strip():
+    if final_type == EXPENSE_LABEL and final_category == PROTECTED_CATEGORY and not description.strip():
         st.error("Na categoria Outros, a descrição é obrigatória.")
         return False
     execute_write(
@@ -282,7 +288,7 @@ def update_transaction(transaction_id: int, movement_type: str, category: str, d
             "id": transaction_id,
             "type": final_type,
             "category": final_category,
-            "description": description.strip(),
+            "description": description.strip() if final_type == EXPENSE_LABEL and final_category == PROTECTED_CATEGORY else "",
             "value": value,
             "date": str(movement_date),
         },
@@ -330,7 +336,9 @@ def render_movement_card(row: pd.Series, categories: list[str] | None = None, ed
             if movement_type == EXPENSE_LABEL:
                 current_category = category if category in categories else PROTECTED_CATEGORY
                 edit_category = st.selectbox("Categoria", categories, index=categories.index(current_category), key=f"edit_category_{transaction_id}")
-            edit_description = st.text_input("Descrição", value=description, key=f"edit_description_{transaction_id}")
+            edit_description = ""
+            if movement_type == EXPENSE_LABEL and edit_category == PROTECTED_CATEGORY:
+                edit_description = st.text_input("Descrição obrigatória", value=description, key=f"edit_description_{transaction_id}")
             edit_value = st.number_input("Valor", min_value=0.0, step=1.0, value=float(row.get("value", 0)), key=f"edit_value_{transaction_id}")
             parsed_date = pd.to_datetime(row.get("date"), errors="coerce")
             default_date = parsed_date.date() if not pd.isna(parsed_date) else date.today()
@@ -339,6 +347,7 @@ def render_movement_card(row: pd.Series, categories: list[str] | None = None, ed
             with c1:
                 saved = st.form_submit_button("Guardar alteração", type="primary", use_container_width=True)
             with c2:
+                st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
                 deleted = st.form_submit_button("Eliminar movimento", use_container_width=True)
 
         if saved and update_transaction(transaction_id, movement_type, edit_category, edit_description, edit_value, edit_date):
@@ -375,6 +384,7 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
         f"Gastaste {money(expense)} este mês.",
         f"Tens {money(balance)} disponíveis",
         f"Faltam {money(abs(balance))} para equilibrar o mês",
+        "Saldo disponível",
     )
 
     c1, c2, c3 = st.columns(3)
@@ -394,6 +404,8 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
         rows = [
             ("Total recebido", money(income)),
             ("Total gasto", money(expense)),
+            ("Movimentos no mês", str(len(pdf))),
+            ("Último movimento", "Sem movimentos" if pdf.empty else f"{pdf.iloc[0]['category']} — {money(float(pdf.iloc[0]['value']))}"),
             ("Maior saída", "Sem despesas" if top_expense is None else f"{top_expense['category']} — {money(float(top_expense['value']))}"),
         ]
         if not top_category.empty and (top_expense is None or str(top_category.index[0]) != str(top_expense["category"])):
@@ -404,10 +416,12 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
         with st.container(border=True):
             with st.form(f"add_transaction_{person}", clear_on_submit=True):
                 movement_type = st.selectbox("Tipo de movimento", ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL], key=f"add_type_{person}")
-                category = PROTECTED_CATEGORY
+                category = ""
+                description = ""
                 if movement_type == EXPENSE_LABEL:
                     category = st.selectbox("Categoria", categories, key=f"add_category_{person}")
-                description = st.text_input("Descrição", key=f"add_description_{person}")
+                    if category == PROTECTED_CATEGORY:
+                        description = st.text_input("Descrição obrigatória", key=f"add_description_{person}")
                 value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{person}")
                 movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{person}")
                 submitted = st.form_submit_button("Adicionar movimento", type="primary", use_container_width=True)
@@ -440,6 +454,7 @@ def render_couple_dashboard(df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
         f"Sobraram {money(balance)} depois das despesas." if balance >= 0 else f"As despesas passaram as entradas em {money(abs(balance))}.",
         "Este mês está positivo",
         "Este mês precisa de atenção",
+        "Saldo disponível",
     )
 
     cols = st.columns(3)
@@ -509,26 +524,27 @@ def render_goals_page(goals_df: pd.DataFrame, tx_df: pd.DataFrame) -> None:
         for _, goal in goals_df.iterrows():
             render_goal_card(goal, monthly_capacity, editable=True)
 
-    render_section_header("Criar nova meta", "Usa quando quiseres acrescentar um novo objetivo.")
-    with st.container(border=True):
-        with st.form("create_goal", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                name = st.text_input("Nome da meta")
-            with c2:
-                target = st.number_input("Objetivo", min_value=0.0, step=10.0)
-            with c3:
-                current = st.number_input("Valor atual", min_value=0.0, step=10.0)
-            submitted = st.form_submit_button("Guardar meta", type="primary", use_container_width=True)
-        if submitted:
-            if not name.strip() or target <= 0:
-                st.error("Indica o nome da meta e um objetivo superior a zero.")
-            else:
-                execute_write(
-                    "INSERT INTO goals (name,description,target_amount,current_amount) VALUES (:name,'',:target,:current)",
-                    {"name": name.strip(), "target": target, "current": current},
-                )
-                clear_and_refresh()
+    with st.expander("+ Criar nova meta", expanded=False):
+        st.caption("Usa quando quiseres acrescentar um novo objetivo.")
+        with st.container(border=True):
+            with st.form("create_goal", clear_on_submit=True):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    name = st.text_input("Nome da meta")
+                with c2:
+                    target = st.number_input("Objetivo", min_value=0.0, step=10.0)
+                with c3:
+                    current = st.number_input("Valor atual", min_value=0.0, step=10.0)
+                submitted = st.form_submit_button("Guardar meta", type="primary", use_container_width=True)
+            if submitted:
+                if not name.strip() or target <= 0:
+                    st.error("Indica o nome da meta e um objetivo superior a zero.")
+                else:
+                    execute_write(
+                        "INSERT INTO goals (name,description,target_amount,current_amount) VALUES (:name,'',:target,:current)",
+                        {"name": name.strip(), "target": target, "current": current},
+                    )
+                    clear_and_refresh()
 
 
 def set_category_mode(mode: str | None) -> None:
@@ -577,7 +593,7 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
         )
 
         if selected == PROTECTED_CATEGORY:
-            st.info("A categoria Outros está protegida para despesas sem categoria específica. Não pode ser eliminada nem renomeada.")
+            st.warning("A categoria Outros é obrigatória e não pode ser alterada.")
             return
 
         mode = st.session_state.get("category_mode")
@@ -588,6 +604,7 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
                     set_category_mode("edit")
                     st.rerun()
             with c2:
+                st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
                 if st.button("Eliminar categoria", use_container_width=True):
                     set_category_mode("delete")
                     st.rerun()
@@ -623,7 +640,8 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
         with st.form("delete_category_form"):
             c1, c2 = st.columns(2)
             with c1:
-                confirmed = st.form_submit_button("Eliminar definitivamente", type="primary", use_container_width=True)
+                st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
+                confirmed = st.form_submit_button("Eliminar definitivamente", use_container_width=True)
             with c2:
                 cancelled = st.form_submit_button("Cancelar", use_container_width=True)
         if confirmed:
@@ -650,7 +668,7 @@ def export_table_pt(df: pd.DataFrame) -> pd.DataFrame:
         }
     )
     if "Valor" in export_df.columns:
-        export_df["Valor"] = export_df["Valor"].apply(money)
+        export_df["Valor"] = pd.to_numeric(export_df["Valor"], errors="coerce").fillna(0).round(2)
     if "Data" in export_df.columns:
         export_df["Data"] = export_df["Data"].apply(format_date_pt)
     return export_df
@@ -710,7 +728,7 @@ def render_export_page(df: pd.DataFrame) -> None:
     file_suffix = f"{year}_{month:02d}" + (f"_{person.lower()}" if person != "Todos" else "")
     with c1:
         st.download_button(
-            "Exportar CSV",
+            "Descarregar CSV",
             dataframe_to_csv(visible_df),
             f"movimentos_{file_suffix}.csv",
             "text/csv",
@@ -718,7 +736,7 @@ def render_export_page(df: pd.DataFrame) -> None:
         )
     with c2:
         st.download_button(
-            "Exportar Excel",
+            "Descarregar Excel",
             dataframe_to_excel(visible_df),
             f"movimentos_{file_suffix}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -755,7 +773,9 @@ def inject_app_polish() -> None:
         .hero-micro { color: #64748b !important; font-size: .8rem; font-weight: 850; }
         .hero-title { color: #0f172a !important; font-size: clamp(1.15rem, 4vw, 1.65rem); font-weight: 950; letter-spacing: -.03em; margin-top: .15rem; }
         .hero-subtitle { color: #475569 !important; font-size: .92rem; font-weight: 700; margin-top: .18rem; }
+        .hero-amount-block { text-align: right; }
         .hero-amount { color: #0f766e !important; font-size: clamp(1.6rem, 7vw, 2.45rem); font-weight: 950; white-space: nowrap; }
+        .hero-amount-subtitle { color: #475569 !important; font-size: .82rem; font-weight: 850; margin-top: .1rem; }
         .negative-card .hero-amount { color: #dc2626 !important; }
         .quick-summary-card {
             background: rgba(255,255,255,.96);
@@ -766,16 +786,17 @@ def inject_app_polish() -> None:
         }
         .quick-summary-row {
             align-items: center;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 2px solid #cbd5e1;
             display: flex;
             gap: .75rem;
             justify-content: space-between;
-            padding: .55rem 0;
+            padding: .68rem 0;
         }
         .quick-summary-row:last-child { border-bottom: 0; }
-        .quick-summary-row span { color: #64748b !important; font-weight: 800; }
+        .quick-summary-row span { color: #334155 !important; font-weight: 900; }
         .quick-summary-row strong { color: #0f172a !important; font-weight: 950; text-align: right; }
         .clean-goal-card { box-shadow: 0 10px 24px rgba(15,23,42,.07) !important; }
+        [data-testid="stForm"] { background: rgba(255,255,255,.72) !important; border-color: rgba(148,163,184,.25) !important; box-shadow: 0 8px 18px rgba(15,23,42,.04) !important; }
         .goal-progress-wrap { margin-top: -.35rem !important; margin-bottom: .75rem !important; }
         .stButton > button,
         .stDownloadButton > button,
@@ -811,6 +832,12 @@ def inject_app_polish() -> None:
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
+        .stButton > button *,
+        .stDownloadButton > button *,
+        button[data-testid^="baseButton"] * {
+            color: inherit !important;
+            -webkit-text-fill-color: inherit !important;
+        }
         .stButton > button:disabled,
         .stDownloadButton > button:disabled,
         button:disabled {
@@ -818,6 +845,33 @@ def inject_app_polish() -> None:
             -webkit-text-fill-color: #475569 !important;
             background: #e2e8f0 !important;
             border-color: #cbd5e1 !important;
+        }
+        div:has(.danger-action-marker) + div button,
+        div:has(.danger-action-marker) + div button[kind="secondary"] {
+            background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+            border-color: #b91c1c !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+        div:has(.danger-action-marker) + div button:hover,
+        div:has(.danger-action-marker) + div button:active {
+            background: linear-gradient(135deg, #dc2626, #991b1b) !important;
+            border-color: #991b1b !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+        div:has(.success-action-marker) + div button {
+            background: linear-gradient(135deg, #059669, #047857) !important;
+            border-color: #047857 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+        div:has(.success-action-marker) + div button:hover,
+        div:has(.success-action-marker) + div button:active {
+            background: linear-gradient(135deg, #047857, #065f46) !important;
+            border-color: #065f46 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
         }
         @media (max-width: 760px) {
             .finance-hero-card { align-items: flex-start; flex-direction: column; padding: .9rem; }
