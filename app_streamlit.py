@@ -326,29 +326,29 @@ def render_movement_card(row: pd.Series, categories: list[str] | None = None, ed
         return
 
     with st.expander("Editar ou eliminar", expanded=False):
-        with st.form(f"edit_transaction_{transaction_id}"):
-            options = ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL]
-            current_type = EXPENSE_LABEL if not income_row else str(row.get("type") or "Salário")
-            if current_type not in options:
-                current_type = "Salário"
-            movement_type = st.selectbox("Tipo de movimento", options, index=options.index(current_type), key=f"edit_type_{transaction_id}")
-            edit_category = PROTECTED_CATEGORY
-            if movement_type == EXPENSE_LABEL:
-                current_category = category if category in categories else PROTECTED_CATEGORY
-                edit_category = st.selectbox("Categoria", categories, index=categories.index(current_category), key=f"edit_category_{transaction_id}")
-            edit_description = ""
-            if movement_type == EXPENSE_LABEL and edit_category == PROTECTED_CATEGORY:
-                edit_description = st.text_input("Descrição obrigatória", value=description, key=f"edit_description_{transaction_id}")
-            edit_value = st.number_input("Valor", min_value=0.0, step=1.0, value=float(row.get("value", 0)), key=f"edit_value_{transaction_id}")
-            parsed_date = pd.to_datetime(row.get("date"), errors="coerce")
-            default_date = parsed_date.date() if not pd.isna(parsed_date) else date.today()
-            edit_date = st.date_input("Data", value=min(default_date, date.today()), max_value=date.today(), key=f"edit_date_{transaction_id}")
-            c1, c2 = st.columns(2)
-            with c1:
-                saved = st.form_submit_button("Guardar alteração", type="primary", use_container_width=True)
-            with c2:
-                st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
-                deleted = st.form_submit_button("Eliminar movimento", use_container_width=True)
+        options = ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL]
+        current_type = EXPENSE_LABEL if not income_row else str(row.get("type") or "Salário")
+        if current_type not in options:
+            current_type = "Salário"
+        movement_type = st.selectbox("Tipo de movimento", options, index=options.index(current_type), key=f"edit_type_{transaction_id}")
+        edit_category = PROTECTED_CATEGORY
+        if movement_type == EXPENSE_LABEL:
+            current_category = category if category in categories else PROTECTED_CATEGORY
+            edit_category = st.selectbox("Categoria", categories, index=categories.index(current_category), key=f"edit_category_{transaction_id}")
+        edit_description = ""
+        if movement_type == EXPENSE_LABEL and edit_category == PROTECTED_CATEGORY:
+            edit_description = st.text_input("Descrição obrigatória", value=description, key=f"edit_description_{transaction_id}")
+        edit_value = st.number_input("Valor", min_value=0.0, step=1.0, value=float(row.get("value", 0)), key=f"edit_value_{transaction_id}")
+        parsed_date = pd.to_datetime(row.get("date"), errors="coerce")
+        default_date = parsed_date.date() if not pd.isna(parsed_date) else date.today()
+        edit_date = st.date_input("Data", value=min(default_date, date.today()), max_value=date.today(), key=f"edit_date_{transaction_id}")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
+            saved = st.button("Guardar alteração", key=f"save_transaction_{transaction_id}", use_container_width=True)
+        with c2:
+            st.markdown("<div class='danger-action-marker'></div>", unsafe_allow_html=True)
+            deleted = st.button("Eliminar movimento", key=f"delete_transaction_{transaction_id}", use_container_width=True)
 
         if saved and update_transaction(transaction_id, movement_type, edit_category, edit_description, edit_value, edit_date):
             clear_and_refresh()
@@ -414,17 +414,17 @@ def render_person_dashboard(person: str, data: pd.DataFrame, categories: list[st
     with quick_cols[1]:
         render_section_header("Adicionar movimento")
         with st.container(border=True):
-            with st.form(f"add_transaction_{person}", clear_on_submit=True):
-                movement_type = st.selectbox("Tipo de movimento", ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL], key=f"add_type_{person}")
-                category = ""
-                description = ""
-                if movement_type == EXPENSE_LABEL:
-                    category = st.selectbox("Categoria", categories, key=f"add_category_{person}")
-                    if category == PROTECTED_CATEGORY:
-                        description = st.text_input("Descrição obrigatória", key=f"add_description_{person}")
-                value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{person}")
-                movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{person}")
-                submitted = st.form_submit_button("Adicionar movimento", type="primary", use_container_width=True)
+            movement_type = st.selectbox("Tipo de movimento", ["Salário", "Subsídio de Alimentação", EXPENSE_LABEL], key=f"add_type_{person}")
+            category = ""
+            description = ""
+            if movement_type == EXPENSE_LABEL:
+                category = st.selectbox("Categoria", categories, key=f"add_category_{person}")
+                if category == PROTECTED_CATEGORY:
+                    description = st.text_input("Descrição obrigatória", key=f"add_description_{person}")
+            value = st.number_input("Valor", min_value=0.0, step=1.0, key=f"add_value_{person}")
+            movement_date = st.date_input("Data", value=date.today(), max_value=date.today(), key=f"add_date_{person}")
+            st.markdown("<div class='success-action-marker'></div>", unsafe_allow_html=True)
+            submitted = st.button("Adicionar movimento", key=f"submit_add_transaction_{person}", use_container_width=True)
             if submitted and save_transaction(person, movement_type, category, description, value, movement_date):
                 clear_and_refresh()
 
@@ -463,7 +463,7 @@ def render_couple_dashboard(df: pd.DataFrame, goals_df: pd.DataFrame) -> None:
     with cols[1]:
         render_metric_card("Gasto este mês", money(expense), "expense")
     with cols[2]:
-        render_metric_card("Saldo disponível", money(balance), "info")
+        render_metric_card("Movimentos", str(len(df)), "info", "Registos no período")
 
     render_section_header("Resumo rápido")
     top_line = "Sem despesas registadas"
@@ -654,7 +654,7 @@ def render_categories_page(categories_df: pd.DataFrame, tx_df: pd.DataFrame) -> 
             st.rerun()
 
 
-def export_table_pt(df: pd.DataFrame) -> pd.DataFrame:
+def export_table_pt(df: pd.DataFrame, *, format_value: bool = False) -> pd.DataFrame:
     columns = ["person", "type", "category", "description", "value", "date"]
     export_df = df[[col for col in columns if col in df.columns]].copy()
     export_df = export_df.rename(
@@ -668,7 +668,8 @@ def export_table_pt(df: pd.DataFrame) -> pd.DataFrame:
         }
     )
     if "Valor" in export_df.columns:
-        export_df["Valor"] = pd.to_numeric(export_df["Valor"], errors="coerce").fillna(0).round(2)
+        numeric_values = pd.to_numeric(export_df["Valor"], errors="coerce").fillna(0).round(2)
+        export_df["Valor"] = numeric_values.apply(money) if format_value else numeric_values
     if "Data" in export_df.columns:
         export_df["Data"] = export_df["Data"].apply(format_date_pt)
     return export_df
@@ -723,7 +724,8 @@ def render_export_page(df: pd.DataFrame) -> None:
         render_empty_state("Sem movimentos no período selecionado.")
         return
 
-    visible_df = export_table_pt(export_df)
+    visible_df = export_table_pt(export_df, format_value=True)
+    excel_df = export_table_pt(export_df, format_value=False)
     c1, c2 = st.columns(2)
     file_suffix = f"{year}_{month:02d}" + (f"_{person.lower()}" if person != "Todos" else "")
     with c1:
@@ -737,7 +739,7 @@ def render_export_page(df: pd.DataFrame) -> None:
     with c2:
         st.download_button(
             "Descarregar Excel",
-            dataframe_to_excel(visible_df),
+            dataframe_to_excel(excel_df),
             f"movimentos_{file_suffix}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
