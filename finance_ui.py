@@ -76,9 +76,7 @@ CSS = """
     .stApp,
     .stMain,
     .main {
-        background:
-            radial-gradient(circle at 10% 0%, rgba(254, 226, 226, .75), transparent 30rem),
-            linear-gradient(135deg, #f8fafc 0%, var(--bg) 48%, var(--bg-2) 100%) !important;
+        background: linear-gradient(180deg, #f7faff 0%, var(--bg) 100%) !important;
         color: var(--text) !important;
         color-scheme: light !important;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
